@@ -1026,8 +1026,8 @@ Uint8 FC_SetGlyphCacheLevel(FC_Font* font, int cache_level, FC_Image* cache_text
         return 0;
 
     // Must be sequentially added
-    if(cache_level > font->glyph_cache_count + 1)
-        return 0;
+    //if(cache_level > font->glyph_cache_count + 1)
+    //    return 0;
 
     if(cache_level == font->glyph_cache_count)
     {
@@ -2401,8 +2401,9 @@ static int FC_GetAscentFromCodepoint(FC_Font* font, Uint32 codepoint)
         return 0;
 
     // FIXME: Store ascent so we can return it here
-    FC_GetGlyphData(font, &glyph, codepoint);
-    return glyph.rect.h;
+    if(FC_GetGlyphData(font, &glyph, codepoint))
+        return glyph.rect.h;
+    else return 0;
 }
 
 static int FC_GetDescentFromCodepoint(FC_Font* font, Uint32 codepoint)
@@ -2413,8 +2414,9 @@ static int FC_GetDescentFromCodepoint(FC_Font* font, Uint32 codepoint)
         return 0;
 
     // FIXME: Store descent so we can return it here
-    FC_GetGlyphData(font, &glyph, codepoint);
-    return glyph.rect.h;
+    if(FC_GetGlyphData(font, &glyph, codepoint))
+        return glyph.rect.h;
+    else return 0;
 }
 
 int FC_GetAscent(FC_Font* font, const char* formatted_text, ...)

@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include "SDL_FontCache.h"
+#include "soloud_c.h"
 
 #include "renderer.h"
 #include "utils.h"
@@ -31,6 +32,7 @@ int ErrorOcurred = 0;
 char *fpscounter;
 
 FC_Font* font = NULL;
+Soloud *soloud = NULL;
 
 //Time between frames
 double deltaTime = 0;
@@ -57,7 +59,13 @@ int main(int argc, char *argv[]){
 	
 	//General initializations
 
-    srand( (unsigned)time(NULL) );
+	srand( (unsigned)time(NULL) );
+	
+	soloud = Soloud_create();
+	if(Soloud_initEx(soloud,SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO)<0){
+		printf("SoLoud could not initialize! \n");
+		ErrorOcurred = 1; goto EndProgram;
+	}
     
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 	{
@@ -196,6 +204,11 @@ int main(int argc, char *argv[]){
 	
 	FreeRenderer();
 	FreeModel(&cube);
+
+	if(soloud!=NULL){
+		Soloud_deinit(soloud);
+		Soloud_destroy(soloud);
+	}
 
 	if(font!=NULL)
 		FC_FreeFont(font);
