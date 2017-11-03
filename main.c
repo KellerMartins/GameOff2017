@@ -273,27 +273,27 @@ void GameUpdate(){
 
 	if (GetKey(SDL_SCANCODE_U))
 	{
-		RotateCamera((Vector3){0,0,-10});
+		RotateCamera((Vector3){0,0,-20});
 	}
 	else if (GetKey(SDL_SCANCODE_J))
 	{
-		RotateCamera((Vector3){0,0,10});
+		RotateCamera((Vector3){0,0,20});
 	}
 	if (GetKey(SDL_SCANCODE_K))
 	{
-		RotateCamera((Vector3){10,0,0});
+		RotateCamera((Vector3){20,0,0});
 	}
 	else if (GetKey(SDL_SCANCODE_H))
 	{
-		RotateCamera((Vector3){-10,0,0});
+		RotateCamera((Vector3){-20,0,0});
 	}
 	if (GetKey(SDL_SCANCODE_I))
 	{
-		RotateCamera((Vector3){0,10,0});
+		RotateCamera((Vector3){0,20,0});
 	}
 	else if (GetKey(SDL_SCANCODE_Y))
 	{
-		RotateCamera((Vector3){0,-10,0});
+		RotateCamera((Vector3){0,-20,0});
 	}
 
 	if (GetKey(SDL_SCANCODE_ESCAPE))

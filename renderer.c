@@ -22,7 +22,8 @@ void RotateCamera(Vector3 rotation){
     cameraRotation.x +=rotation.x*deltaTime;
     cameraRotation.y +=rotation.y*deltaTime;
     cameraRotation.z +=rotation.z*deltaTime;
-    cameraForward = RotatePoint((Vector3){0,0,-1},cameraRotation,(Vector3){0,0,0});
+    //Temporary fix for the forward vector
+    cameraForward = RotatePoint((Vector3){0,0,-1},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
 }
 
 void TransformCamera(Vector3 position, Vector3 rotation){
@@ -153,8 +154,10 @@ void RenderModel(Model *model){
         vertices[0] = model->vertices[model->edges[e].v[0]];
         vertices[1] = model->vertices[model->edges[e].v[1]];
 
-        if(vertices[0].z>cameraPosition.z) continue;
-        if(vertices[1].z>cameraPosition.z) continue;
+        //Ignore vertices that are behind the camera
+        Vector3 v0 = {vertices[0].x-cameraPosition.x, vertices[0].y-cameraPosition.y, vertices[0].z-cameraPosition.z};
+        Vector3 v1 = {vertices[1].x-cameraPosition.x, vertices[1].y-cameraPosition.y, vertices[1].z-cameraPosition.z};
+        if(dot(v0,cameraForward)<0 || dot(v1,cameraForward)<0) continue;
 
         int px[2], py[2];
 
