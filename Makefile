@@ -1,4 +1,4 @@
-PD = D:
+PD = C:
 #CC specifies which compiler we're using
 CC = gcc
 
