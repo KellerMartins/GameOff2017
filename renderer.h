@@ -61,6 +61,8 @@ void FreeRenderer();
 void RenderModelList(ModelList models);
 void RenderModel(Model *model);
 
+void RenderBloom(Pixel *bloomPix, unsigned downsample);
+
 void DrawLine(int x0, int y0, int x1, int y1,Pixel color);
 Vector3 RotatePoint(Vector3 p, Vector3 r, Vector3 pivot);
 #endif

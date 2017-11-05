@@ -1,9 +1,9 @@
 #include "renderer.h"
 
-extern const int GAME_SCREEN_WIDTH;
-extern const int GAME_SCREEN_HEIGHT;
+extern int GAME_SCREEN_WIDTH;
+extern int GAME_SCREEN_HEIGHT;
 extern double deltaTime;
-
+extern int FOV;
 Pixel *screen = NULL;
 SDL_Renderer* renderer = NULL;
 
@@ -15,14 +15,14 @@ void MoveCamera(Vector3 position){
     cameraPosition.x +=position.x*deltaTime;
     cameraPosition.y +=position.y*deltaTime;
     cameraPosition.z +=position.z*deltaTime;
-    //printf("%f %f %f\n",cameraPosition.x,cameraPosition.y,cameraPosition.z);
+    printf("%f %f %f\n",cameraPosition.x,cameraPosition.y,cameraPosition.z);
 }
 
 void RotateCamera(Vector3 rotation){
     cameraRotation.x +=rotation.x*deltaTime;
     cameraRotation.y +=rotation.y*deltaTime;
     cameraRotation.z +=rotation.z*deltaTime;
-    //Temporary fix for the forward vector
+    //Temporary fix for the forward vector (360-y)
     cameraForward = RotatePoint((Vector3){0,0,-1},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
 }
 
@@ -36,6 +36,7 @@ void ClearScreen(){
     float scanlineAdd = 0.2f*255;
     for(y=0;y<GAME_SCREEN_HEIGHT;y++){
         for(x=0;x<GAME_SCREEN_WIDTH;x++){
+            //Clear screen with black and gray stripes, to look like a scanline
             if(y%10 <4){
                 screen[cp].r = 0;
                 screen[cp].g = 0;
@@ -46,6 +47,36 @@ void ClearScreen(){
                 screen[cp].g = scanlineAdd;
                 screen[cp].b = scanlineAdd;
                 screen[cp].a = scanlineAdd;
+            }
+            cp++;
+        }
+    }
+}
+
+void RenderBloom(Pixel *bloomPix, unsigned downsample){
+    unsigned width = GAME_SCREEN_WIDTH/downsample,height = GAME_SCREEN_HEIGHT/downsample;
+    int i,j,k,l,cp = 0;
+    //Iterates for each pixel in the bloom texture
+    for(i=0;i<height;i++){
+        for(j=0;j<width;j++){
+            //Samples in the render texture the most bright pixel (hightest alpha value) in the area
+            Pixel brightest = {0,0,0,0};
+            int avgBright = 0;
+            for(k=0;k<downsample;k++){
+                for(l=0;l<downsample;l++){
+                    if((i*GAME_SCREEN_WIDTH + j)*(downsample)+ l + k*GAME_SCREEN_WIDTH > GAME_SCREEN_WIDTH*GAME_SCREEN_HEIGHT) continue; 
+                    Pixel current = screen[(i*GAME_SCREEN_WIDTH + j)*(downsample)+ l + k*GAME_SCREEN_WIDTH];
+                    avgBright += current.a;
+                    if(current.a > brightest.a) brightest = current;
+                }
+            }
+            //Set to zero if brightest is the scanline pixel
+            if(brightest.a==0.2f*255){
+                bloomPix[cp] = (Pixel){0,0,0,0};
+            }else{
+                avgBright /=downsample*downsample;
+                brightest.a = avgBright;
+                bloomPix[cp] = (Pixel){brightest.b,brightest.g,brightest.r,avgBright};
             }
             cp++;
         }
@@ -102,7 +133,7 @@ int InitRenderer(SDL_Renderer* rend){
     if(renderer == NULL){
         return 0;
     }
-    cameraPosition = (Vector3){0,0,0};
+    cameraPosition = (Vector3){0,1.31,-4.8};
     cameraRotation = (Vector3){0,0,0};
 
     return 1;
@@ -118,7 +149,7 @@ void FreeRenderer(){
 void RenderModel(Model *model){
     int e,v;
     float x,y,z;
-
+    float focLen = 1000/tan((FOV*PI_OVER_180)/2);
     //Object Rotation
     float sinx = sin((model->rotation.x)* PI_OVER_180);
     float cosx = cos((model->rotation.x)* PI_OVER_180);
@@ -154,11 +185,6 @@ void RenderModel(Model *model){
         vertices[0] = model->vertices[model->edges[e].v[0]];
         vertices[1] = model->vertices[model->edges[e].v[1]];
 
-        //Ignore vertices that are behind the camera
-        Vector3 v0 = {vertices[0].x-cameraPosition.x, vertices[0].y-cameraPosition.y, vertices[0].z-cameraPosition.z};
-        Vector3 v1 = {vertices[1].x-cameraPosition.x, vertices[1].y-cameraPosition.y, vertices[1].z-cameraPosition.z};
-        if(dot(v0,cameraForward)<0 || dot(v1,cameraForward)<0) continue;
-
         int px[2], py[2];
 
         for(v = 0; v <=1; v++){
@@ -173,20 +199,23 @@ void RenderModel(Model *model){
             vertices[v].y = x*ryt1 + z*ryt2 + y*ryt3;
             vertices[v].z = z*rzt1 + y*rzt2 - x*siny;
 
+            //Ignore vertices that are behind the camera
+            Vector3 v2c = {vertices[v].x-cameraPosition.x, vertices[v].y-cameraPosition.y, vertices[v].z-cameraPosition.z};
+            if(dot(v2c,cameraForward)<0) goto NextEdge;
+
+            //Apply camera rotation on the vertex
             x = vertices[v].x - cameraPosition.x;
             y = vertices[v].y - cameraPosition.y;
             z = vertices[v].z - cameraPosition.z;
 
-            //Apply camera rotation on the vertex
             vertices[v].x = x*crxt1 + y*crxt2 + z*crxt3;
             vertices[v].y = x*cryt1 + z*cryt2 + y*cryt3;
             vertices[v].z = z*crzt1 + y*crzt2 - x*csiny;
 
+
             //Vertex projection
-            
-            Vector3 e = {1,1,1000};
-            px[v] = (e.z/vertices[v].z)*vertices[v].x - e.x;
-            py[v] = (e.z/vertices[v].z)*vertices[v].y - e.y;
+            px[v] = (focLen/vertices[v].z)*vertices[v].x;
+            py[v] = (focLen/vertices[v].z)*vertices[v].y;
 
             px[v]+=GAME_SCREEN_WIDTH/2;
             py[v]+=GAME_SCREEN_HEIGHT/2;
@@ -211,6 +240,8 @@ void RenderModel(Model *model){
         color.a *=dist;
 
         DrawLine(px[0], py[0], px[1], py[1],color);
+        NextEdge:
+        continue;
     }
 }
 

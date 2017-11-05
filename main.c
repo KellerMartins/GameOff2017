@@ -25,7 +25,12 @@ int GAME_SCREEN_HEIGHT = 360;
 int SCREEN_WIDTH = 1280;
 int SCREEN_HEIGHT = 720;
 
-int SCREEN_SCALE = 1;
+unsigned SCREEN_SCALE = 1;
+unsigned BLOOMS1_DOWNSCALE = 2;
+unsigned BLOOMS2_DOWNSCALE = 8;
+
+unsigned FOV = 70;
+int BLOOM_ENABLED = 1;
 
 int Exit = 0;
 int ErrorOcurred = 0;
@@ -56,27 +61,34 @@ int main(int argc, char *argv[]){
 	SDL_Renderer * renderer = NULL;
 	SDL_Window* window = NULL;	
 	SDL_Texture * render = NULL;
-	
+	SDL_Texture * bloomStep1 = NULL;
+	SDL_Texture * bloomStep2 = NULL;
+
 	//General initializations
 
+	//Random from start time
 	srand( (unsigned)time(NULL) );
 	
+	//Initializing SoLoud sound engine
 	soloud = Soloud_create();
 	if(Soloud_initEx(soloud,SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO)<0){
 		printf("SoLoud could not initialize! \n");
 		ErrorOcurred = 1; goto EndProgram;
 	}
-    
+	
+	//Initializing SDL
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 	{
         printf("SDL could not initialize! SLD_Error: %s\n", SDL_GetError());
 		ErrorOcurred = 1; goto EndProgram;
 	}
+	//Initializing SDL_Image
 	if( !(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) )
 	{
 		printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
 		ErrorOcurred = 1; goto EndProgram;
 	}
+	//Creating window
 	window = SDL_CreateWindow( "Retro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	if(window == NULL){
 		printf("Window could not be created! SDL_Error %s\n", SDL_GetError() );
@@ -92,9 +104,22 @@ int main(int argc, char *argv[]){
 	render = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT);
 	SDL_RenderSetLogicalSize(renderer, GAME_SCREEN_WIDTH, GAME_SCREEN_HEIGHT);
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_ADD);
-	//Define the pointer to the texture array
-	Pixel *pix;
-	int pitch = GAME_SCREEN_WIDTH * sizeof(unsigned int);
+	
+	//Creating the bloom textures
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,"best");
+	bloomStep1 = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, GAME_SCREEN_WIDTH/BLOOMS1_DOWNSCALE, GAME_SCREEN_HEIGHT/BLOOMS1_DOWNSCALE);
+	bloomStep2 = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, GAME_SCREEN_WIDTH/BLOOMS2_DOWNSCALE, GAME_SCREEN_HEIGHT/BLOOMS2_DOWNSCALE);
+	SDL_SetTextureBlendMode(bloomStep1,SDL_BLENDMODE_ADD);
+	SDL_SetTextureBlendMode(bloomStep2,SDL_BLENDMODE_ADD);
+	
+	//Define the pointer to the textures pixel array
+	Pixel *renderPix;
+	int renderPitch = GAME_SCREEN_WIDTH * sizeof(unsigned int);
+
+	Pixel *bloomS1Pix;
+	int bloomS1Pitch = (GAME_SCREEN_WIDTH/4 ) * sizeof(unsigned int);
+	Pixel *bloomS2Pix;
+	int bloomS2Pitch = (GAME_SCREEN_WIDTH/16 ) * sizeof(unsigned int);
 
 	//Initialize frame counter string
 	fpscounter = (char*)calloc(50,sizeof(char));
@@ -131,6 +156,9 @@ int main(int argc, char *argv[]){
 	SDL_Rect texr; texr.x = GAME_SCREEN_WIDTH/2.67; texr.y = GAME_SCREEN_HEIGHT/4.5f; texr.w = GAME_SCREEN_WIDTH/4; texr.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 
+	//How much the sun must move as the camera rotates
+	Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
+
 	//Sky texture
 	SDL_Surface * skySurf = IMG_Load("Textures/Sky.png");
 	if(skySurf == NULL){
@@ -157,6 +185,7 @@ int main(int argc, char *argv[]){
 	cube = LoadModel("Models/Plane.txt");
 	cube.color = (Pixel){100,30,255,255};
 
+	//Game loop
 	while (!Exit)
 	{
 		//Ms tick time
@@ -169,24 +198,43 @@ int main(int argc, char *argv[]){
 		GameUpdate();
 		
 		//Locks texture to manual modification
-		SDL_LockTexture(render, NULL, (void**)&pix, &pitch);
-			UpdateScreenPointer(pix);
+		SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
+			UpdateScreenPointer(renderPix);
 			ClearScreen();
 			RenderModel(&cube);
+			
+			if(BLOOM_ENABLED){
+				//Process first bloom pass
+				SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
+					RenderBloom(bloomS1Pix,BLOOMS1_DOWNSCALE);
+				SDL_UnlockTexture(bloomStep1);
+
+				//Process second bloom pass
+				SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
+					RenderBloom(bloomS2Pix,BLOOMS2_DOWNSCALE);
+				SDL_UnlockTexture(bloomStep2);
+			}
 		SDL_UnlockTexture(render);
 
 		//Clears screen and blit the render texture into the screen
 		SDL_RenderClear(renderer);
 		SDL_RenderCopy(renderer, skyTex, NULL, &texSky);
-		texr.x = cameraRotation.y*20 + GAME_SCREEN_WIDTH/2.67;
-		texr.y = GAME_SCREEN_HEIGHT/4.5f - cameraRotation.x*18;
-		
 		SDL_RenderCopy(renderer, render, NULL, NULL);
 		SDL_RenderCopy(renderer, vigTex, NULL, &texVig);
+
+		texr.x = cameraRotation.y*sunRot.x + GAME_SCREEN_WIDTH/2.67;
+		texr.y = GAME_SCREEN_HEIGHT/4.5f - cameraRotation.x*sunRot.y;
 		SDL_RenderCopy(renderer, sunTex, NULL, &texr);
-		
+
+		if(BLOOM_ENABLED){
+			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
+			SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
+		}
+
+		//Draw stats text
         FC_DrawAlign(font, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
 
+		//Passes rendered image to screen
 		SDL_RenderPresent(renderer);
 
 		//Calculates the time it took to process this iteration
@@ -299,5 +347,10 @@ void GameUpdate(){
 	if (GetKey(SDL_SCANCODE_ESCAPE))
 	{
 		Exit = 1;
+	}
+
+	if (GetKeyDown(SDL_SCANCODE_B))
+	{
+		BLOOM_ENABLED = !BLOOM_ENABLED;
 	}
 }
