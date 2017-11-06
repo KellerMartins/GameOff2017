@@ -15,20 +15,27 @@ void MoveCamera(Vector3 position){
     cameraPosition.x +=position.x*deltaTime;
     cameraPosition.y +=position.y*deltaTime;
     cameraPosition.z +=position.z*deltaTime;
-    printf("%f %f %f\n",cameraPosition.x,cameraPosition.y,cameraPosition.z);
+    //printf("P: %f %f %f\n",cameraPosition.x,cameraPosition.y,cameraPosition.z);
 }
 
 void RotateCamera(Vector3 rotation){
     cameraRotation.x +=rotation.x*deltaTime;
     cameraRotation.y +=rotation.y*deltaTime;
     cameraRotation.z +=rotation.z*deltaTime;
+    //printf("R: %f %f %f\n",cameraRotation.x,cameraRotation.y,cameraRotation.z);
     //Temporary fix for the forward vector (360-y)
     cameraForward = RotatePoint((Vector3){0,0,-1},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
 }
 
 void TransformCamera(Vector3 position, Vector3 rotation){
-    MoveCamera(position);
-    RotateCamera(rotation);
+
+    cameraPosition.x =position.x;
+    cameraPosition.y =position.y;
+    cameraPosition.z =position.z;
+
+    cameraRotation.x =rotation.x;
+    cameraRotation.y =rotation.y;
+    cameraRotation.z =rotation.z;
 }
 
 void ClearScreen(){
@@ -231,7 +238,7 @@ void RenderModel(Model *model){
 
         Vector3 V0 = add(model->vertices[model->edges[e].v[0]],model->position);
         float dist = pow(V0.x-cameraPosition.x,2) + pow(V0.y-cameraPosition.y,2) + pow(V0.z-cameraPosition.z,2); 
-        const int fadeDist = 750;
+        const int fadeDist = 7500;
         dist = clamp((fadeDist-dist)/fadeDist,0,1); 
 
         color.r *=dist;

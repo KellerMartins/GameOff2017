@@ -52,8 +52,6 @@ extern Vector3 cameraRotation;
 void InputUpdate();
 void GameUpdate();
 
-Model cube;
-
 int main(int argc, char *argv[]){
 	unsigned int frameTicks;
 	unsigned int mstime = 0;
@@ -150,10 +148,11 @@ int main(int argc, char *argv[]){
 		printf("Error opening image!\n");
 	}
 	SDL_Texture * sunTex = SDL_CreateTextureFromSurface(renderer, sunSurf);
+	SDL_FreeSurface(sunSurf);
 	int sunW, sunH;
 	SDL_QueryTexture(sunTex, NULL, NULL, &sunW, &sunH);
 	float sunRatio = sunH/(float)sunW;
-	SDL_Rect texr; texr.x = GAME_SCREEN_WIDTH/2.67; texr.y = GAME_SCREEN_HEIGHT/4.5f; texr.w = GAME_SCREEN_WIDTH/4; texr.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
+	SDL_Rect rectr; rectr.x = GAME_SCREEN_WIDTH/2.67; rectr.y = GAME_SCREEN_HEIGHT/4.5f; rectr.w = GAME_SCREEN_WIDTH/4; rectr.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 
 	//How much the sun must move as the camera rotates
@@ -165,10 +164,11 @@ int main(int argc, char *argv[]){
 		printf("Error opening image!\n");
 	}
 	SDL_Texture * skyTex = SDL_CreateTextureFromSurface(renderer, skySurf);
+	SDL_FreeSurface(skySurf);
 	int skyW, skyH;
 	SDL_QueryTexture(skyTex, NULL, NULL, &skyW, &skyH);
 	float skyRatio = skyH/(float)skyW;
-	SDL_Rect texSky; texSky.x = 0; texSky.y = 0; texSky.w = GAME_SCREEN_WIDTH; texSky.h = GAME_SCREEN_WIDTH*skyRatio; 
+	SDL_Rect rectSky; rectSky.x = 0; rectSky.y = 0; rectSky.w = GAME_SCREEN_WIDTH; rectSky.h = GAME_SCREEN_WIDTH*skyRatio; 
 
 	//Vignette Texture
 	SDL_Surface * vigSurf = IMG_Load("Textures/Vignette.png");
@@ -176,14 +176,34 @@ int main(int argc, char *argv[]){
 		printf("Error opening image!\n");
 	}
 	SDL_Texture * vigTex = SDL_CreateTextureFromSurface(renderer, vigSurf);
+	SDL_FreeSurface(vigSurf);
 	int vigW, vigH;
 	SDL_QueryTexture(vigTex, NULL, NULL, &vigW, &vigH);
 	float vigRatio = vigH/(float)vigW;
-	SDL_Rect texVig; texVig.x = 0; texVig.y = 0; texVig.w = GAME_SCREEN_WIDTH; texVig.h = GAME_SCREEN_WIDTH*vigRatio;
+	SDL_Rect rectVig; rectVig.x = 0; rectVig.y = 0; rectVig.w = GAME_SCREEN_WIDTH; rectVig.h = GAME_SCREEN_WIDTH*vigRatio;
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 
-	cube = LoadModel("Models/Plane.txt");
-	cube.color = (Pixel){100,30,255,255};
+	//Game title Texture
+	SDL_Surface * titleSurf = IMG_Load("Textures/Title.png");
+	if(titleSurf == NULL){
+		printf("Error opening image!\n");
+	}
+	SDL_Texture * titleTex = SDL_CreateTextureFromSurface(renderer, titleSurf);
+	SDL_FreeSurface(titleSurf);
+	int titleW, titleH;
+	SDL_QueryTexture(titleTex, NULL, NULL, &titleW, &titleH);
+	float titleRatio = titleH/(float)titleW;
+	SDL_Rect rectTitle; rectTitle.x = GAME_SCREEN_WIDTH/12; rectTitle.y = 0; rectTitle.w = GAME_SCREEN_WIDTH/1.2; rectTitle.h = GAME_SCREEN_WIDTH/1.2 * titleRatio;
+	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
+
+	Model Play = LoadModel("Models/Play.txt");
+	Play.color = (Pixel){100,30,255,255};
+	Model Options = LoadModel("Models/Options.txt");
+	Options.color = (Pixel){100,30,255,255};
+	Model ExitModel = LoadModel("Models/Exit.txt");
+	ExitModel.color = (Pixel){100,30,255,255};
+
+	TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
 
 	//Game loop
 	while (!Exit)
@@ -201,7 +221,9 @@ int main(int argc, char *argv[]){
 		SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
 			UpdateScreenPointer(renderPix);
 			ClearScreen();
-			RenderModel(&cube);
+			RenderModel(&Play);
+			RenderModel(&Options);
+			RenderModel(&ExitModel);
 			
 			if(BLOOM_ENABLED){
 				//Process first bloom pass
@@ -218,18 +240,20 @@ int main(int argc, char *argv[]){
 
 		//Clears screen and blit the render texture into the screen
 		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, skyTex, NULL, &texSky);
+		SDL_RenderCopy(renderer, skyTex, NULL, &rectSky);
 		SDL_RenderCopy(renderer, render, NULL, NULL);
-		SDL_RenderCopy(renderer, vigTex, NULL, &texVig);
+		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
 
-		texr.x = cameraRotation.y*sunRot.x + GAME_SCREEN_WIDTH/2.67;
-		texr.y = GAME_SCREEN_HEIGHT/4.5f - cameraRotation.x*sunRot.y;
-		SDL_RenderCopy(renderer, sunTex, NULL, &texr);
+		rectr.x = cameraRotation.y*sunRot.x + GAME_SCREEN_WIDTH/2.67;
+		rectr.y = GAME_SCREEN_HEIGHT/4.5f - cameraRotation.x*sunRot.y;
+		SDL_RenderCopy(renderer, sunTex, NULL, &rectr);
 
 		if(BLOOM_ENABLED){
 			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
 			SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
 		}
+		//Render menu screen
+		SDL_RenderCopy(renderer, titleTex, NULL, &rectTitle);
 
 		//Draw stats text
         FC_DrawAlign(font, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
@@ -246,21 +270,43 @@ int main(int argc, char *argv[]){
 	}
 	
 	//End of the program
-	EndProgram:
+
+	//Non critical dealocations
+	
 	free(fpscounter);
 	free(keyboard_last);
 	
 	FreeRenderer();
-	FreeModel(&cube);
+	FreeModel(&Play);
+	FreeModel(&Options);
+	FreeModel(&ExitModel);
+
+	if(sunTex!=NULL)
+	SDL_DestroyTexture(sunTex);
+
+	if(skyTex!=NULL)
+		SDL_DestroyTexture(skyTex);
+
+	if(vigTex!=NULL)
+		SDL_DestroyTexture(vigTex);
+
+	if(vigTex!=NULL)
+		SDL_DestroyTexture(titleTex);
+
+	if(font!=NULL)
+	FC_FreeFont(font);
+
+	EndProgram:
+	//Systems dealocation
 
 	if(soloud!=NULL){
 		Soloud_deinit(soloud);
 		Soloud_destroy(soloud);
 	}
-
-	if(font!=NULL)
-		FC_FreeFont(font);
 			
+	if(render!=NULL)
+		SDL_DestroyTexture(render);
+
 	if(renderer!=NULL)
 		SDL_DestroyRenderer(renderer);
 
