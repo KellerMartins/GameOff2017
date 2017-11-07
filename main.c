@@ -27,7 +27,7 @@ int SCREEN_HEIGHT = 720;
 
 unsigned SCREEN_SCALE = 1;
 unsigned BLOOMS1_DOWNSCALE = 2;
-unsigned BLOOMS2_DOWNSCALE = 8;
+unsigned BLOOMS2_DOWNSCALE = 4;
 
 unsigned FOV = 70;
 int BLOOM_ENABLED = 1;
@@ -48,10 +48,13 @@ Uint8 *keyboard_last;
 SDL_Event event;
 
 extern Vector3 cameraRotation;
+extern Vector3 cameraForward;
+extern Vector3 cameraUp;
+extern Vector3 cameraRight;
 
 void InputUpdate();
 void GameUpdate();
-
+Model Car;
 int main(int argc, char *argv[]){
 	unsigned int frameTicks;
 	unsigned int mstime = 0;
@@ -207,6 +210,11 @@ int main(int argc, char *argv[]){
 
 	//TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
 	*/
+
+	Model Track = LoadModel("Models/TestTrack.txt");
+	Car = LoadModel("Models/Car1.txt");
+	Car.position.x = 60;
+
 	//Game loop
 	while (!Exit)
 	{
@@ -224,6 +232,9 @@ int main(int argc, char *argv[]){
 			UpdateScreenPointer(renderPix);
 			ClearScreen();
 			
+			RenderModel(&Track);
+			RenderModel(&Car);
+
 			if(BLOOM_ENABLED){
 				//Process first bloom pass
 				SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
@@ -276,6 +287,8 @@ int main(int argc, char *argv[]){
 	free(keyboard_last);
 	
 	FreeRenderer();
+	FreeModel(&Track);
+	FreeModel(&Car);
 	//FreeModel(&Play);
 	//FreeModel(&Options);
 	//FreeModel(&ExitModel);
@@ -341,27 +354,34 @@ void GameUpdate(){
 	//Camera movement
 	if (GetKey(SDL_SCANCODE_W))
 	{
-		MoveCamera((Vector3){0,0,-50});
+		Vector3 dir = scalarMult(cameraForward,50);
+
+		MoveCamera(dir);
 	}
 	else if (GetKey(SDL_SCANCODE_S))
 	{
-		MoveCamera((Vector3){0,0,100});
+		Vector3 dir = scalarMult(cameraForward,-50);
+		MoveCamera(dir);
 	}
 	if (GetKey(SDL_SCANCODE_D))
 	{
-		MoveCamera((Vector3){-50,0,0});
+		Vector3 dir = scalarMult(cameraRight,50);
+		MoveCamera(dir);
 	}
 	else if (GetKey(SDL_SCANCODE_A))
 	{
-		MoveCamera((Vector3){50,0,0});
+		Vector3 dir = scalarMult(cameraRight,-50);
+		MoveCamera(dir);
 	}
 	if (GetKey(SDL_SCANCODE_E))
 	{
-		MoveCamera((Vector3){0,10,0});
+		Vector3 dir = scalarMult(cameraUp,10);
+		MoveCamera(dir);
 	}
 	else if (GetKey(SDL_SCANCODE_Q))
 	{
-		MoveCamera((Vector3){0,-10,0});
+		Vector3 dir = scalarMult(cameraUp,-10);
+		MoveCamera(dir);
 	}
 
 
@@ -375,11 +395,15 @@ void GameUpdate(){
 	}
 	if (GetKey(SDL_SCANCODE_K))
 	{
-		RotateCamera((Vector3){20,0,0});
+		//RotateCamera((Vector3){20,0,0});
+		Car.position.x+=1;
+		printf("%f %f %f\n",Car.position.x,Car.position.y,Car.position.z);
 	}
 	else if (GetKey(SDL_SCANCODE_H))
 	{
-		RotateCamera((Vector3){-20,0,0});
+		//RotateCamera((Vector3){-20,0,0});
+		Car.position.x-=1;
+		printf("%f %f %f\n",Car.position.x,Car.position.y,Car.position.z);
 	}
 	if (GetKey(SDL_SCANCODE_I))
 	{

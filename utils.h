@@ -27,6 +27,7 @@
 #define dot(u,v)   ( (u).x * (v).x + (u).y * (v).y + (u).z * (v).z )
 #define subtract(u,v)   (Vector3){ (u).x-(v).x , (u).y-(v).y , (u).z-(v).z}
 #define add(u,v)   (Vector3){ (u).x+(v).x , (u).y+(v).y , (u).z+(v).z}
+#define scalarMult(v,s)   (Vector3){ (v).x * (s), (v).y * (s),(v).z * (s)}
 #define norm(v)     sqrt(dot(v,v))     // norm = length of  vector
 #define d(u,v)      norm(subtract(u,v))          // distance = norm of difference
 
