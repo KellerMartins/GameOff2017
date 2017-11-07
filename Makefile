@@ -3,7 +3,7 @@ PD = C:
 CC = gcc
 
 #OBJS specifies which files to compile as part of the project
-OBJS = main.c renderer.c utils.c SDL_FontCache.c
+OBJS = main.c renderer.c utils.c SDL_FontCache.c GameLogic.c
 
 #INCLUDE_PATHS specifies the additional include paths we'll need
 INCLUDE_PATHS_W = -I $(PD)\SDL2\SDL2_MinGW_32Bits\include -I $(PD)\SoLoud\include 

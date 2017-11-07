@@ -208,14 +208,18 @@ void RenderModel(Model *model){
         for(v = 0; v <=1; v++){
             
 
-            x = vertices[v].x+model->position.x;
-            y = vertices[v].y+model->position.y;
-            z = vertices[v].z+model->position.z;
+            x = vertices[v].x;
+            y = vertices[v].y;
+            z = vertices[v].z;
 
             //Apply object rotation on the vertex
             vertices[v].x = x*rxt1 + y*rxt2 + z*rxt3;
             vertices[v].y = x*ryt1 + z*ryt2 + y*ryt3;
             vertices[v].z = z*rzt1 + y*rzt2 - x*siny;
+
+            vertices[v].x += model->position.x;
+            vertices[v].y += model->position.y;
+            vertices[v].z += model->position.z;
 
             //Ignore vertices that are behind the camera
             Vector3 v2c = {vertices[v].x-cameraPosition.x, vertices[v].y-cameraPosition.y, vertices[v].z-cameraPosition.z};

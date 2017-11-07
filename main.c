@@ -10,6 +10,7 @@
 
 #include "renderer.h"
 #include "utils.h"
+#include "GameLogic.h"
 
 #define FRAMES_PER_SECOND 60
 
@@ -54,7 +55,6 @@ extern Vector3 cameraRight;
 
 void InputUpdate();
 void GameUpdate();
-Model Car;
 int main(int argc, char *argv[]){
 	unsigned int frameTicks;
 	unsigned int mstime = 0;
@@ -212,9 +212,7 @@ int main(int argc, char *argv[]){
 	*/
 
 	Model Track = LoadModel("Models/TestTrack.txt");
-	Car = LoadModel("Models/Car1.txt");
-	Car.position.x = 60;
-
+	InitCars();
 	//Game loop
 	while (!Exit)
 	{
@@ -233,7 +231,7 @@ int main(int argc, char *argv[]){
 			ClearScreen();
 			
 			RenderModel(&Track);
-			RenderModel(&Car);
+			RenderCars();
 
 			if(BLOOM_ENABLED){
 				//Process first bloom pass
@@ -288,7 +286,7 @@ int main(int argc, char *argv[]){
 	
 	FreeRenderer();
 	FreeModel(&Track);
-	FreeModel(&Car);
+	FreeCars();
 	//FreeModel(&Play);
 	//FreeModel(&Options);
 	//FreeModel(&ExitModel);
@@ -349,6 +347,8 @@ void InputUpdate(){
     }
 }
 
+
+
 void GameUpdate(){
 		
 	//Camera movement
@@ -395,15 +395,11 @@ void GameUpdate(){
 	}
 	if (GetKey(SDL_SCANCODE_K))
 	{
-		//RotateCamera((Vector3){20,0,0});
-		Car.position.x+=1;
-		printf("%f %f %f\n",Car.position.x,Car.position.y,Car.position.z);
+		RotateCamera((Vector3){20,0,0});
 	}
 	else if (GetKey(SDL_SCANCODE_H))
 	{
-		//RotateCamera((Vector3){-20,0,0});
-		Car.position.x-=1;
-		printf("%f %f %f\n",Car.position.x,Car.position.y,Car.position.z);
+		RotateCamera((Vector3){-20,0,0});
 	}
 	if (GetKey(SDL_SCANCODE_I))
 	{
@@ -422,5 +418,21 @@ void GameUpdate(){
 	if (GetKeyDown(SDL_SCANCODE_B))
 	{
 		BLOOM_ENABLED = !BLOOM_ENABLED;
+	}
+	if(GetKey(SDL_SCANCODE_UP))
+	{
+		CarMovement (0, CAR_FRONT);
+	}
+	if(GetKey(SDL_SCANCODE_RIGHT))
+	{
+		CarMovement (0, CAR_RIGHT);
+	}
+	if(GetKey(SDL_SCANCODE_LEFT))
+	{
+		CarMovement (0, CAR_LEFT);
+	}
+	if(!GetKey(SDL_SCANCODE_UP) && !GetKey(SDL_SCANCODE_RIGHT)&& !GetKey(SDL_SCANCODE_LEFT))
+	{
+		CarMovement(0, CAR_STOP);
 	}
 }
