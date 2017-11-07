@@ -53,7 +53,6 @@ void InputUpdate();
 void GameUpdate();
 
 int main(int argc, char *argv[]){
-	printf("Uhull\n");
 	unsigned int frameTicks;
 	unsigned int mstime = 0;
 
