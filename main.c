@@ -184,7 +184,8 @@ int main(int argc, char *argv[]){
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 
 	//Game title Texture
-	SDL_Surface * titleSurf = IMG_Load("Textures/Title.png");
+	//(Disabled for now)
+	/*SDL_Surface * titleSurf = IMG_Load("Textures/Title.png");
 	if(titleSurf == NULL){
 		printf("Error opening image!\n");
 	}
@@ -203,8 +204,9 @@ int main(int argc, char *argv[]){
 	Model ExitModel = LoadModel("Models/Exit.txt");
 	ExitModel.color = (Pixel){100,30,255,255};
 
-	TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
 
+	//TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
+	*/
 	//Game loop
 	while (!Exit)
 	{
@@ -221,9 +223,6 @@ int main(int argc, char *argv[]){
 		SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
 			UpdateScreenPointer(renderPix);
 			ClearScreen();
-			RenderModel(&Play);
-			RenderModel(&Options);
-			RenderModel(&ExitModel);
 			
 			if(BLOOM_ENABLED){
 				//Process first bloom pass
@@ -252,8 +251,8 @@ int main(int argc, char *argv[]){
 			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
 			SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
 		}
-		//Render menu screen
-		SDL_RenderCopy(renderer, titleTex, NULL, &rectTitle);
+		//Render menu screen (Disabled for now)
+		//SDL_RenderCopy(renderer, titleTex, NULL, &rectTitle);
 
 		//Draw stats text
         FC_DrawAlign(font, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
@@ -277,9 +276,9 @@ int main(int argc, char *argv[]){
 	free(keyboard_last);
 	
 	FreeRenderer();
-	FreeModel(&Play);
-	FreeModel(&Options);
-	FreeModel(&ExitModel);
+	//FreeModel(&Play);
+	//FreeModel(&Options);
+	//FreeModel(&ExitModel);
 
 	if(sunTex!=NULL)
 	SDL_DestroyTexture(sunTex);
@@ -290,8 +289,9 @@ int main(int argc, char *argv[]){
 	if(vigTex!=NULL)
 		SDL_DestroyTexture(vigTex);
 
-	if(vigTex!=NULL)
-		SDL_DestroyTexture(titleTex);
+	//(Disabled for now)
+	//if(titleTex!=NULL)
+	//	SDL_DestroyTexture(titleTex);
 
 	if(font!=NULL)
 	FC_FreeFont(font);
