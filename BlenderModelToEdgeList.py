@@ -1,6 +1,8 @@
 import bpy
 
-filePath = 'D:\Documents\Keller\Projetos\GameJams\GameOff2017\Models\Cube.txt'
+folderPath = "D:\Documents\Keller\Projetos\GameJams\GameOff2017\Models\\"
+fileName = "Exit"
+filePath = folderPath+fileName+".txt"
 f = open(filePath, 'w')
 obdata = bpy.context.object.data
 
@@ -20,4 +22,5 @@ f.write('{} '.format(eCount))
 for e in obdata.edges:
     f.write('{} {} '.format(e.vertices[0], e.vertices[1]))
 
+f.close()
 print(obdata.name + " exported sucessfully!")
