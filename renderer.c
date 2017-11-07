@@ -10,6 +10,8 @@ SDL_Renderer* renderer = NULL;
 Vector3 cameraPosition;
 Vector3 cameraRotation;
 Vector3 cameraForward = {0,0,-1};
+Vector3 cameraUp = {0,-1,0};
+Vector3 cameraRight = {-1,0,0};
 
 void MoveCamera(Vector3 position){
     cameraPosition.x +=position.x*deltaTime;
@@ -23,8 +25,10 @@ void RotateCamera(Vector3 rotation){
     cameraRotation.y +=rotation.y*deltaTime;
     cameraRotation.z +=rotation.z*deltaTime;
     //printf("R: %f %f %f\n",cameraRotation.x,cameraRotation.y,cameraRotation.z);
-    //Temporary fix for the forward vector (360-y)
-    cameraForward = RotatePoint((Vector3){0,0,-1},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
+    //Temporary fix for the camera direction vectors (360-)
+    cameraForward = RotatePoint((Vector3){0,0,-1},(Vector3){360-cameraRotation.x,360-cameraRotation.y,360-cameraRotation.z},(Vector3){0,0,0});
+    cameraUp = RotatePoint((Vector3){0,1,0},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
+    cameraRight = RotatePoint((Vector3){-1,0,0},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
 }
 
 void TransformCamera(Vector3 position, Vector3 rotation){
@@ -93,6 +97,10 @@ void RenderBloom(Pixel *bloomPix, unsigned downsample){
 Model LoadModel(char modelPath[]){
     printf("Loading ( %s )\n",modelPath);
     FILE *file = fopen(modelPath,"r");
+    if(!file){
+        printf("> Failed to load model!\n\n");
+        return (Model){0,0,NULL,NULL,};
+    }
     Model m;
     fscanf(file,"%u",&m.vCount);
     m.vertices = (Vector3*) calloc(m.vCount,sizeof(Vector3));
@@ -116,7 +124,7 @@ Model LoadModel(char modelPath[]){
     m.enabled = 1;
     m.color = (Pixel){255,255,255,255};
 
-    printf("> Model loaded sucessfully!\n");
+    printf("> Model loaded sucessfully!\n\n");
     return m;
 }
 
@@ -154,6 +162,9 @@ void FreeRenderer(){
  }
 
 void RenderModel(Model *model){
+
+    if(!model->enabled) return;
+
     int e,v;
     float x,y,z;
     float focLen = 1000/tan((FOV*PI_OVER_180)/2);
@@ -197,9 +208,9 @@ void RenderModel(Model *model){
         for(v = 0; v <=1; v++){
             
 
-            x = vertices[v].x;
-            y = vertices[v].y;
-            z = vertices[v].z;
+            x = vertices[v].x+model->position.x;
+            y = vertices[v].y+model->position.y;
+            z = vertices[v].z+model->position.z;
 
             //Apply object rotation on the vertex
             vertices[v].x = x*rxt1 + y*rxt2 + z*rxt3;
@@ -238,7 +249,7 @@ void RenderModel(Model *model){
 
         Vector3 V0 = add(model->vertices[model->edges[e].v[0]],model->position);
         float dist = pow(V0.x-cameraPosition.x,2) + pow(V0.y-cameraPosition.y,2) + pow(V0.z-cameraPosition.z,2); 
-        const int fadeDist = 7500;
+        const int fadeDist = 75000;
         dist = clamp((fadeDist-dist)/fadeDist,0,1); 
 
         color.r *=dist;
