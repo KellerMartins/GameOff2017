@@ -421,18 +421,20 @@ void GameUpdate(){
 	}
 	if(GetKey(SDL_SCANCODE_UP))
 	{
-		CarMovement (0, CAR_FRONT);
+		CarHandling (0, CAR_FRONT);
 	}
 	if(GetKey(SDL_SCANCODE_RIGHT))
 	{
-		CarMovement (0, CAR_RIGHT);
+		CarHandling (0, CAR_RIGHT);
 	}
 	if(GetKey(SDL_SCANCODE_LEFT))
 	{
-		CarMovement (0, CAR_LEFT);
+		CarHandling (0, CAR_LEFT);
 	}
 	if(!GetKey(SDL_SCANCODE_UP) && !GetKey(SDL_SCANCODE_RIGHT)&& !GetKey(SDL_SCANCODE_LEFT))
 	{
-		CarMovement(0, CAR_STOP);
+		CarHandling(0, CAR_STOP);
 	}
+	CarMovement(0);
+	CarCamera(0);
 }

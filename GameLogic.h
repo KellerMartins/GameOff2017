@@ -15,6 +15,7 @@ enum CarDirection {CAR_FRONT, CAR_STOP, CAR_UP, CAR_DOWN, CAR_RIGHT, CAR_LEFT};
 void InitCars ();
 void RenderCars ();
 void FreeCars ();
-void CarMovement (int players, int dir);
-
+void CarHandling(int player, int dir);
+void CarMovement (int players);
+void CarCamera(int player);
 #endif
