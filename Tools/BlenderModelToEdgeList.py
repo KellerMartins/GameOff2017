@@ -1,7 +1,7 @@
 import bpy
 
-folderPath = "D:\Documents\Keller\Projetos\GameJams\GameOff2017\Models\\"
-fileName = "Exit"
+folderPath = "..\Models\\"
+fileName = "Cube"
 filePath = folderPath+fileName+".txt"
 f = open(filePath, 'w')
 obdata = bpy.context.object.data

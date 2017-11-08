@@ -1,6 +1,6 @@
 #include "GameLogic.h"
 #define MAX_SPEED 20
-#define MAX_TURNSPEED 5
+#define MAX_TURNSPEED 2
 #define MAX_CARS 1
 extern double deltaTime;
 Car players[MAX_CARS];
@@ -51,12 +51,14 @@ void CarMovement (int player, int dir)
     
     if(dir == CAR_FRONT)
     {
-        players[player].speed += players[player].speed < MAX_SPEED ? 10*deltaTime : 0; 
-    } else{
+        players[player].speed += players[player].speed < MAX_SPEED ? 11*deltaTime : 0; 
+    }else if(dir == CAR_STOP){
+        players[player].speed -= players[player].speed- 7*deltaTime >= 0 ? 7*deltaTime : 0; 
+    }else{
         players[player].speed -= players[player].speed- 10*deltaTime >= 0 ? 10*deltaTime : 0; 
     }
 
-    float TurnSpeed = players[player].speed < MAX_TURNSPEED ? players[player].speed : MAX_TURNSPEED;
+    float TurnSpeed = players[player].speed/5 < MAX_TURNSPEED ? players[player].speed/5 : MAX_TURNSPEED;
     
     if(!players[player].flying)
     {
@@ -104,11 +106,6 @@ void CarMovement (int player, int dir)
     //Calcula o vetor que aponta para a frente do carro
     Vector3 forward = RotatePoint((Vector3){0,0,-1}, players[player].object.rotation, VECTOR3_ZERO);
     
-    //Seta a velocidade do carro
-    forward.x *= players[player].speed * deltaTime;
-    forward.y *= players[player].speed * deltaTime;
-    forward.z *= players[player].speed * deltaTime;
-    
     //Move o carro
-    players[player].object.position = add(players[player].object.position, forward); 
+    players[player].object.position = add(players[player].object.position, scalarMult(forward,players[player].speed * deltaTime)); 
 }
