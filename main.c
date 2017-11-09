@@ -6,7 +6,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include "SDL_FontCache.h"
+
+#ifndef __unix__
 #include "soloud_c.h"
+#endif
 
 #include "renderer.h"
 #include "utils.h"
@@ -38,7 +41,10 @@ int ErrorOcurred = 0;
 char *fpscounter;
 
 FC_Font* font = NULL;
+
+#ifndef __unix__
 Soloud *soloud = NULL;
+#endif
 
 //Time between frames
 double deltaTime = 0;
@@ -70,13 +76,14 @@ int main(int argc, char *argv[]){
 	//Random from start time
 	srand( (unsigned)time(NULL) );
 	
-	//Initializing SoLoud sound engine
+	//Initializing SoLoud sound engine (Windows Only)
+	#ifndef __unix__
 	soloud = Soloud_create();
 	if(Soloud_initEx(soloud,SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO)<0){
 		printf("SoLoud could not initialize! \n");
 		ErrorOcurred = 1; goto EndProgram;
 	}
-	
+	#endif
 	//Initializing SDL
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 	{
@@ -252,8 +259,8 @@ int main(int argc, char *argv[]){
 		SDL_RenderCopy(renderer, render, NULL, NULL);
 		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
 
-		rectr.x = cameraRotation.y*sunRot.x + GAME_SCREEN_WIDTH/2.67;
-		rectr.y = GAME_SCREEN_HEIGHT/4.5f - cameraRotation.x*sunRot.y;
+		rectr.x = cameraRotation.y*fmod(sunRot.x,180) + GAME_SCREEN_WIDTH/2.67;
+		rectr.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
 		SDL_RenderCopy(renderer, sunTex, NULL, &rectr);
 
 		if(BLOOM_ENABLED){
@@ -310,11 +317,13 @@ int main(int argc, char *argv[]){
 	EndProgram:
 	//Systems dealocation
 
+	#ifndef __unix__
 	if(soloud!=NULL){
 		Soloud_deinit(soloud);
 		Soloud_destroy(soloud);
 	}
-			
+	#endif		
+
 	if(render!=NULL)
 		SDL_DestroyTexture(render);
 

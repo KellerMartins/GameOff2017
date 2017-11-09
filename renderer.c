@@ -40,7 +40,7 @@ void TransformCamera(Vector3 position, Vector3 rotation){
     cameraRotation.x =rotation.x;
     cameraRotation.y =rotation.y;
     cameraRotation.z =rotation.z;
-
+    
     cameraForward = RotatePoint((Vector3){0,0,-1},(Vector3){360-cameraRotation.x,360-cameraRotation.y,360-cameraRotation.z},(Vector3){0,0,0});
     cameraUp = RotatePoint((Vector3){0,1,0},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
     cameraRight = RotatePoint((Vector3){-1,0,0},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
