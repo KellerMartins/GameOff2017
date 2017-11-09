@@ -54,10 +54,15 @@ const Uint8 *keyboard_current = NULL;
 Uint8 *keyboard_last;
 SDL_Event event;
 
+Model TrackPath = {0,0,0,0};
+
 extern Vector3 cameraRotation;
 extern Vector3 cameraForward;
 extern Vector3 cameraUp;
 extern Vector3 cameraRight;
+
+Model Fred1;
+Model Fred2;
 
 void InputUpdate();
 void GameUpdate();
@@ -219,6 +224,13 @@ int main(int argc, char *argv[]){
 	*/
 
 	Model Track = LoadModel("Models/TestTrack.txt");
+	TrackPath = LoadModel("Models/TestTrackPath.txt");
+
+	Fred1 = LoadModel("Models/Fred.txt");
+	Fred1.color = (Pixel){0,0,255,255};
+	Fred2 = LoadModel("Models/Fred.txt");
+	Fred2.color = (Pixel){0,255,0,255};
+
 	InitCars();
 	//Game loop
 	while (!Exit)
@@ -238,6 +250,11 @@ int main(int argc, char *argv[]){
 			ClearScreen();
 			
 			RenderModel(&Track);
+			RenderModel(&TrackPath);
+
+			RenderModel(&Fred1);
+			RenderModel(&Fred2);
+
 			RenderCars();
 
 			if(BLOOM_ENABLED){
@@ -287,12 +304,12 @@ int main(int argc, char *argv[]){
 	//End of the program
 
 	//Non critical dealocations
-	
 	free(fpscounter);
 	free(keyboard_last);
 	
 	FreeRenderer();
 	FreeModel(&Track);
+	FreeModel(&TrackPath);
 	FreeCars();
 	//FreeModel(&Play);
 	//FreeModel(&Options);
@@ -356,7 +373,7 @@ void InputUpdate(){
     }
 }
 
-
+Vector3 pos,dir;
 
 void GameUpdate(){
 		
@@ -446,4 +463,5 @@ void GameUpdate(){
 	}
 	CarMovement(0);
 	CarCamera(0);
+	PointInPath(pos,dir,&Fred1.position,&Fred2.position);
 }

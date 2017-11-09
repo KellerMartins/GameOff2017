@@ -1,6 +1,7 @@
 #ifndef GAMELOGIC_H
 #define GAMELOGIC_H
 #include "renderer.h"
+#include "utils.h"
 typedef struct Car{
 
 int life;
@@ -18,4 +19,7 @@ void FreeCars ();
 void CarHandling(int player, int dir);
 void CarMovement (int players);
 void CarCamera(int player);
+
+void PointInPath(Vector3 point, Vector3 direction, Vector3 *closest, Vector3 *next);
+
 #endif

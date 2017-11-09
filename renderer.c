@@ -133,8 +133,8 @@ Model LoadModel(char modelPath[]){
 }
 
 void FreeModel(Model *model){
-    free(model->vertices);
-    free(model->edges);
+    if(model->vertices) free(model->vertices);
+    if(model->edges) free(model->edges);
 }
 
 void RenderModelList(ModelList models){

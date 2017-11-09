@@ -47,4 +47,5 @@ void NormalizeVector(Vector3* v);
 Vector3 Reflection(Vector3 *v1,Vector3 *v2);
 int Step(float edge, float x );
 float Smoothstep(float edge0, float edge1, float x);
+float Vector3Distance (Vector3 a, Vector3 b);
 #endif
