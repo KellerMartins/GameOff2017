@@ -61,8 +61,8 @@ extern Vector3 cameraForward;
 extern Vector3 cameraUp;
 extern Vector3 cameraRight;
 
-Model Fred1;
-Model Fred2;
+Model Fred1 = {0,0,0,0};
+Model Fred2 = {0,0,0,0};
 
 void InputUpdate();
 void GameUpdate();
@@ -310,6 +310,10 @@ int main(int argc, char *argv[]){
 	FreeRenderer();
 	FreeModel(&Track);
 	FreeModel(&TrackPath);
+
+	FreeModel(&Fred1);
+	FreeModel(&Fred2);
+
 	FreeCars();
 	//FreeModel(&Play);
 	//FreeModel(&Options);
@@ -463,5 +467,4 @@ void GameUpdate(){
 	}
 	CarMovement(0);
 	CarCamera(0);
-	PointInPath(pos,dir,&Fred1.position,&Fred2.position);
 }

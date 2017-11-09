@@ -16,7 +16,7 @@ LIBRARY_PATHS_L =
 # -Wl,-subsystem,windows gets rid of the console window
 # -Wl,-subsystem,windows
 # -fopenmp enables openmp support
-COMPILER_FLAGS = -Wall -ffast-math -O3
+COMPILER_FLAGS = -Wall -ffast-math -O3 
 
 #LINKER_FLAGS specifies the libraries we're linking against -lglew32  -mwindows
 LINKER_FLAGS_W = -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf $(PD)\SoLoud\lib\soloud_x86.lib

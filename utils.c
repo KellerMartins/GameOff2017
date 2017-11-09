@@ -93,9 +93,3 @@ float Smoothstep(float edge0, float edge1, float x)
     // Evaluate polynomial
     return x*x*(3 - 2 * x);
 }
-
-float Vector3Distance (Vector3 a, Vector3 b)
-{
-	Vector3 sub = subtract(a,b);
-	return sqrt(pow(sub.x,2)+pow(sub.y,2)+pow(sub.z,2));
-}
