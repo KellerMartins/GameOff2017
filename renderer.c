@@ -40,6 +40,10 @@ void TransformCamera(Vector3 position, Vector3 rotation){
     cameraRotation.x =rotation.x;
     cameraRotation.y =rotation.y;
     cameraRotation.z =rotation.z;
+    
+    cameraForward = RotatePoint((Vector3){0,0,-1},(Vector3){360-cameraRotation.x,360-cameraRotation.y,360-cameraRotation.z},(Vector3){0,0,0});
+    cameraUp = RotatePoint((Vector3){0,1,0},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
+    cameraRight = RotatePoint((Vector3){-1,0,0},(Vector3){cameraRotation.x,360-cameraRotation.y,cameraRotation.z},(Vector3){0,0,0});
 }
 
 void ClearScreen(){
@@ -129,8 +133,8 @@ Model LoadModel(char modelPath[]){
 }
 
 void FreeModel(Model *model){
-    free(model->vertices);
-    free(model->edges);
+    if(model->vertices) free(model->vertices);
+    if(model->edges) free(model->edges);
 }
 
 void RenderModelList(ModelList models){
@@ -217,6 +221,10 @@ void RenderModel(Model *model){
             vertices[v].y = x*ryt1 + z*ryt2 + y*ryt3;
             vertices[v].z = z*rzt1 + y*rzt2 - x*siny;
 
+            vertices[v].x += model->position.x;
+            vertices[v].y += model->position.y;
+            vertices[v].z += model->position.z;
+
             //Ignore vertices that are behind the camera
             Vector3 v2c = {vertices[v].x-cameraPosition.x, vertices[v].y-cameraPosition.y, vertices[v].z-cameraPosition.z};
             if(dot(v2c,cameraForward)<0) goto NextEdge;
@@ -267,7 +275,7 @@ void DrawLine(int x0, int y0, int x1, int y1,Pixel color) {
     int dx = abs(x1-x0), sx = x0<x1 ? 1 : -1;
     int dy = abs(y1-y0), sy = y0<y1 ? 1 : -1; 
     int err = (dx>dy ? dx : -dy)/2, e2;
-    int i,maxIterations = GAME_SCREEN_WIDTH;
+    int i,maxIterations = GAME_SCREEN_WIDTH*2;
     for(i=0;i<maxIterations;i++){
     if(x0>=0 && x0<GAME_SCREEN_WIDTH && y0>=0 && y0<GAME_SCREEN_HEIGHT){
         screen[x0 + y0*GAME_SCREEN_WIDTH].r = clamp(screen[x0 + y0*GAME_SCREEN_WIDTH].r+color.r,0,255);

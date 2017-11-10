@@ -1,0 +1,4 @@
+Blend/ merge=theirs
+Textures/ merge=theirs
+*.dll/ merge=theirs 
+*.exe/ merge=theirs 

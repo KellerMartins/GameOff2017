@@ -6,10 +6,14 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include "SDL_FontCache.h"
+
+#ifndef __unix__
 #include "soloud_c.h"
+#endif
 
 #include "renderer.h"
 #include "utils.h"
+#include "GameLogic.h"
 
 #define FRAMES_PER_SECOND 60
 
@@ -30,14 +34,17 @@ unsigned BLOOMS1_DOWNSCALE = 2;
 unsigned BLOOMS2_DOWNSCALE = 4;
 
 unsigned FOV = 70;
-int BLOOM_ENABLED = 1;
+int BLOOM_ENABLED = 0;
 
 int Exit = 0;
 int ErrorOcurred = 0;
 char *fpscounter;
 
 FC_Font* font = NULL;
+
+#ifndef __unix__
 Soloud *soloud = NULL;
+#endif
 
 //Time between frames
 double deltaTime = 0;
@@ -47,14 +54,25 @@ const Uint8 *keyboard_current = NULL;
 Uint8 *keyboard_last;
 SDL_Event event;
 
+Model TrackPath = {0,0,0,0};
+
 extern Vector3 cameraRotation;
 extern Vector3 cameraForward;
 extern Vector3 cameraUp;
 extern Vector3 cameraRight;
+<<<<<<< HEAD
 
 void InputUpdate();
 void GameUpdate();
 Model Car;
+=======
+
+Model Fred1 = {0,0,0,0};
+Model Fred2 = {0,0,0,0};
+
+void InputUpdate();
+void GameUpdate();
+>>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 int main(int argc, char *argv[]){
 	unsigned int frameTicks;
 	unsigned int mstime = 0;
@@ -70,13 +88,14 @@ int main(int argc, char *argv[]){
 	//Random from start time
 	srand( (unsigned)time(NULL) );
 	
-	//Initializing SoLoud sound engine
+	//Initializing SoLoud sound engine (Windows Only)
+	#ifndef __unix__
 	soloud = Soloud_create();
 	if(Soloud_initEx(soloud,SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO)<0){
 		printf("SoLoud could not initialize! \n");
 		ErrorOcurred = 1; goto EndProgram;
 	}
-	
+	#endif
 	//Initializing SDL
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 	{
@@ -207,6 +226,7 @@ int main(int argc, char *argv[]){
 	Model ExitModel = LoadModel("Models/Exit.txt");
 	ExitModel.color = (Pixel){100,30,255,255};
 
+<<<<<<< HEAD
 
 	//TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
 	*/
@@ -214,7 +234,21 @@ int main(int argc, char *argv[]){
 	Model Track = LoadModel("Models/TestTrack.txt");
 	Car = LoadModel("Models/Car1.txt");
 	Car.position.x = 60;
+=======
+>>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 
+	//TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
+	*/
+
+	Model Track = LoadModel("Models/TestTrack.txt");
+	TrackPath = LoadModel("Models/TestTrackPath.txt");
+
+	Fred1 = LoadModel("Models/Fred.txt");
+	Fred1.color = (Pixel){0,0,255,255};
+	Fred2 = LoadModel("Models/Fred.txt");
+	Fred2.color = (Pixel){0,255,0,255};
+
+	InitCars();
 	//Game loop
 	while (!Exit)
 	{
@@ -233,7 +267,16 @@ int main(int argc, char *argv[]){
 			ClearScreen();
 			
 			RenderModel(&Track);
+<<<<<<< HEAD
 			RenderModel(&Car);
+=======
+			RenderModel(&TrackPath);
+
+			RenderModel(&Fred1);
+			RenderModel(&Fred2);
+
+			RenderCars();
+>>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 
 			if(BLOOM_ENABLED){
 				//Process first bloom pass
@@ -254,8 +297,8 @@ int main(int argc, char *argv[]){
 		SDL_RenderCopy(renderer, render, NULL, NULL);
 		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
 
-		rectr.x = cameraRotation.y*sunRot.x + GAME_SCREEN_WIDTH/2.67;
-		rectr.y = GAME_SCREEN_HEIGHT/4.5f - cameraRotation.x*sunRot.y;
+		rectr.x = cameraRotation.y*fmod(sunRot.x,180) + GAME_SCREEN_WIDTH/2.67;
+		rectr.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
 		SDL_RenderCopy(renderer, sunTex, NULL, &rectr);
 
 		if(BLOOM_ENABLED){
@@ -282,13 +325,21 @@ int main(int argc, char *argv[]){
 	//End of the program
 
 	//Non critical dealocations
-	
 	free(fpscounter);
 	free(keyboard_last);
 	
 	FreeRenderer();
 	FreeModel(&Track);
+<<<<<<< HEAD
 	FreeModel(&Car);
+=======
+	FreeModel(&TrackPath);
+
+	FreeModel(&Fred1);
+	FreeModel(&Fred2);
+
+	FreeCars();
+>>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 	//FreeModel(&Play);
 	//FreeModel(&Options);
 	//FreeModel(&ExitModel);
@@ -312,11 +363,13 @@ int main(int argc, char *argv[]){
 	EndProgram:
 	//Systems dealocation
 
+	#ifndef __unix__
 	if(soloud!=NULL){
 		Soloud_deinit(soloud);
 		Soloud_destroy(soloud);
 	}
-			
+	#endif		
+
 	if(render!=NULL)
 		SDL_DestroyTexture(render);
 
@@ -348,6 +401,8 @@ void InputUpdate(){
         }
     }
 }
+
+Vector3 pos,dir;
 
 void GameUpdate(){
 		
@@ -423,4 +478,22 @@ void GameUpdate(){
 	{
 		BLOOM_ENABLED = !BLOOM_ENABLED;
 	}
+	if(GetKey(SDL_SCANCODE_UP))
+	{
+		CarHandling (0, CAR_FRONT);
+	}
+	if(GetKey(SDL_SCANCODE_RIGHT))
+	{
+		CarHandling (0, CAR_RIGHT);
+	}
+	if(GetKey(SDL_SCANCODE_LEFT))
+	{
+		CarHandling (0, CAR_LEFT);
+	}
+	if(!GetKey(SDL_SCANCODE_UP) && !GetKey(SDL_SCANCODE_RIGHT)&& !GetKey(SDL_SCANCODE_LEFT))
+	{
+		CarHandling(0, CAR_STOP);
+	}
+	CarMovement(0);
+	CarCamera(0);
 }

@@ -8,6 +8,7 @@
 
 #define PI_OVER_180 0.01745329251
 #define ONE_OVER_256 0.00390625
+#define VECTOR3_ZERO (Vector3){0,0,0}
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
@@ -23,6 +24,7 @@
 #define FRAC0(x) (x - floorf(x))
 #define FRAC1(x) (1 - x + floorf(x))
 
+<<<<<<< HEAD
 #define cross(u,v)   (Vector3){ (u).y * (v).z - (u).z * (v).y , (u).z * (v).x - (u).x * (v).z, (u).x * (v).y - (u).y * (v).x}
 #define dot(u,v)   ( (u).x * (v).x + (u).y * (v).y + (u).z * (v).z )
 #define subtract(u,v)   (Vector3){ (u).x-(v).x , (u).y-(v).y , (u).z-(v).z}
@@ -30,6 +32,15 @@
 #define scalarMult(v,s)   (Vector3){ (v).x * (s), (v).y * (s),(v).z * (s)}
 #define norm(v)     sqrt(dot(v,v))     // norm = length of  vector
 #define d(u,v)      norm(subtract(u,v))          // distance = norm of difference
+=======
+#define cross(u,v)  (Vector3){ (u).y * (v).z - (u).z * (v).y , (u).z * (v).x - (u).x * (v).z, (u).x * (v).y - (u).y * (v).x}
+#define dot(u,v)  ( (u).x * (v).x + (u).y * (v).y + (u).z * (v).z )
+#define subtract(u,v) (Vector3){ (u).x - (v).x , (u).y - (v).y , (u).z - (v).z }
+#define add(u,v)  (Vector3){ (u).x + (v).x , (u).y + (v).y , (u).z + (v).z }
+#define scalarMult(v,s) (Vector3){ (v).x * (s), (v).y * (s),(v).z * (s) }
+#define norm(v) sqrt(dot(v,v))                            // norm = length of  vector
+#define dist(u,v) sqrt(dot(subtract(u,v),subtract(u,v)))  // distance = norm of difference
+>>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 
 typedef struct Vector3{
 	float x;
@@ -46,4 +57,5 @@ void NormalizeVector(Vector3* v);
 Vector3 Reflection(Vector3 *v1,Vector3 *v2);
 int Step(float edge, float x );
 float Smoothstep(float edge0, float edge1, float x);
+
 #endif
