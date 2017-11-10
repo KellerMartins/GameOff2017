@@ -212,9 +212,9 @@ void RenderModel(Model *model){
         for(v = 0; v <=1; v++){
             
 
-            x = vertices[v].x+model->position.x;
-            y = vertices[v].y+model->position.y;
-            z = vertices[v].z+model->position.z;
+            x = vertices[v].x;
+            y = vertices[v].y;
+            z = vertices[v].z;
 
             //Apply object rotation on the vertex
             vertices[v].x = x*rxt1 + y*rxt2 + z*rxt3;

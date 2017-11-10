@@ -60,19 +60,12 @@ extern Vector3 cameraRotation;
 extern Vector3 cameraForward;
 extern Vector3 cameraUp;
 extern Vector3 cameraRight;
-<<<<<<< HEAD
-
-void InputUpdate();
-void GameUpdate();
-Model Car;
-=======
 
 Model Fred1 = {0,0,0,0};
 Model Fred2 = {0,0,0,0};
 
 void InputUpdate();
 void GameUpdate();
->>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 int main(int argc, char *argv[]){
 	unsigned int frameTicks;
 	unsigned int mstime = 0;
@@ -226,16 +219,6 @@ int main(int argc, char *argv[]){
 	Model ExitModel = LoadModel("Models/Exit.txt");
 	ExitModel.color = (Pixel){100,30,255,255};
 
-<<<<<<< HEAD
-
-	//TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
-	*/
-
-	Model Track = LoadModel("Models/TestTrack.txt");
-	Car = LoadModel("Models/Car1.txt");
-	Car.position.x = 60;
-=======
->>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 
 	//TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
 	*/
@@ -267,16 +250,12 @@ int main(int argc, char *argv[]){
 			ClearScreen();
 			
 			RenderModel(&Track);
-<<<<<<< HEAD
-			RenderModel(&Car);
-=======
 			RenderModel(&TrackPath);
 
 			RenderModel(&Fred1);
 			RenderModel(&Fred2);
 
 			RenderCars();
->>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 
 			if(BLOOM_ENABLED){
 				//Process first bloom pass
@@ -330,16 +309,12 @@ int main(int argc, char *argv[]){
 	
 	FreeRenderer();
 	FreeModel(&Track);
-<<<<<<< HEAD
-	FreeModel(&Car);
-=======
 	FreeModel(&TrackPath);
 
 	FreeModel(&Fred1);
 	FreeModel(&Fred2);
 
 	FreeCars();
->>>>>>> c501c95c0900da9acba699284fe30138390c0a75
 	//FreeModel(&Play);
 	//FreeModel(&Options);
 	//FreeModel(&ExitModel);
@@ -450,15 +425,11 @@ void GameUpdate(){
 	}
 	if (GetKey(SDL_SCANCODE_K))
 	{
-		//RotateCamera((Vector3){20,0,0});
-		Car.position.x+=1;
-		printf("%f %f %f\n",Car.position.x,Car.position.y,Car.position.z);
+		RotateCamera((Vector3){20,0,0});
 	}
 	else if (GetKey(SDL_SCANCODE_H))
 	{
-		//RotateCamera((Vector3){-20,0,0});
-		Car.position.x-=1;
-		printf("%f %f %f\n",Car.position.x,Car.position.y,Car.position.z);
+		RotateCamera((Vector3){-20,0,0});
 	}
 	if (GetKey(SDL_SCANCODE_I))
 	{
