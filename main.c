@@ -34,7 +34,7 @@ unsigned BLOOMS1_DOWNSCALE = 2;
 unsigned BLOOMS2_DOWNSCALE = 4;
 
 unsigned FOV = 70;
-int BLOOM_ENABLED = 1;
+int BLOOM_ENABLED = 0;
 
 int Exit = 0;
 int ErrorOcurred = 0;
