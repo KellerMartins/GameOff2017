@@ -63,6 +63,7 @@ extern Vector3 cameraRight;
 
 Model Fred1 = {0,0,0,0};
 Model Fred2 = {0,0,0,0};
+Model Fred3 = {0,0,0,0};
 
 void InputUpdate();
 void GameUpdate();
@@ -230,6 +231,8 @@ int main(int argc, char *argv[]){
 	Fred1.color = (Pixel){0,0,255,255};
 	Fred2 = LoadModel("Models/Fred.txt");
 	Fred2.color = (Pixel){0,255,0,255};
+	Fred3 = LoadModel("Models/Fred.txt");
+	Fred3.color = (Pixel){255,0,0,255};
 
 	InitCars();
 	//Game loop
@@ -254,6 +257,7 @@ int main(int argc, char *argv[]){
 
 			RenderModel(&Fred1);
 			RenderModel(&Fred2);
+			RenderModel(&Fred3);
 
 			RenderCars();
 
@@ -313,6 +317,7 @@ int main(int argc, char *argv[]){
 
 	FreeModel(&Fred1);
 	FreeModel(&Fred2);
+	FreeModel(&Fred3);
 
 	FreeCars();
 	//FreeModel(&Play);

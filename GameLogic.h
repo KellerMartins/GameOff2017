@@ -9,6 +9,8 @@ float speed;
 int flying;
 int effect;
 Model object;
+Vector3 next,closest,last;
+Vector3 objRotation;
 Vector3 position;
 Vector3 rotation;
 }Car;

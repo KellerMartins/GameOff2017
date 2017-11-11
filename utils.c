@@ -93,3 +93,7 @@ float Smoothstep(float edge0, float edge1, float x)
     // Evaluate polynomial
     return x*x*(3 - 2 * x);
 }
+
+float lerp(float v0, float v1, float t) {
+  return (1 - t) * v0 + t * v1;
+}
