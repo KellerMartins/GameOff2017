@@ -31,7 +31,7 @@ int SCREEN_HEIGHT = 720;
 
 unsigned SCREEN_SCALE = 1;
 unsigned BLOOMS1_DOWNSCALE = 2;
-unsigned BLOOMS2_DOWNSCALE = 4;
+unsigned BLOOMS2_DOWNSCALE = 16;
 
 unsigned FOV = 70;
 int BLOOM_ENABLED = 0;
@@ -270,6 +270,7 @@ int main(int argc, char *argv[]){
 				//Process second bloom pass
 				SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
 					RenderBloom(bloomS2Pix,BLOOMS2_DOWNSCALE);
+					BlurBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,4);
 				SDL_UnlockTexture(bloomStep2);
 			}
 		SDL_UnlockTexture(render);

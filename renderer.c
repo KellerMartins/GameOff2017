@@ -89,10 +89,47 @@ void RenderBloom(Pixel *bloomPix, unsigned downsample){
             if(brightest.a==0.2f*255){
                 bloomPix[cp] = (Pixel){0,0,0,0};
             }else{
-                avgBright /=downsample*downsample;
+                avgBright =clamp(avgBright/(downsample*downsample),0,255);
                 brightest.a = avgBright;
                 bloomPix[cp] = (Pixel){brightest.b,brightest.g,brightest.r,avgBright};
             }
+            cp++;
+        }
+    }
+}
+
+void BlurBloom(Pixel *bloomPix, unsigned downsample,int blurAmount){
+    unsigned width = GAME_SCREEN_WIDTH/downsample,height = GAME_SCREEN_HEIGHT/downsample;
+    int i,j,k,l,cp = 0;
+    //Iterates for each pixel in the bloom texture
+    for(i=0;i<height;i++){
+        for(j=0;j<width;j++){
+            //Samples in the render texture the most bright pixel (hightest alpha value) in the area
+            Pixel brightest = {0,0,0,0};
+            int b = 0;
+            int g = 0;
+            int r= 0;
+            int a = 0;
+            for(k=-blurAmount;k<blurAmount;k++){
+                for(l=-blurAmount;l<blurAmount;l++){
+                    if((i*width + j)+ l + k*width > width*height) continue; 
+
+                    Pixel current = bloomPix[(i + k)*width + j+l];
+                    int val = (k==0? 1 : abs(k)) * (l==0? 1 : abs(l));
+                    a += current.a/val;
+                    r += current.r/val;
+                    g += current.g/val;
+                    b += current.b/val;
+                    
+                }
+            }
+
+            a =clamp(a/(blurAmount*6),0,255);
+            r =clamp(r/(blurAmount*6),0,255);
+            g =clamp(g/(blurAmount*6),0,255);
+            b =clamp(b/(blurAmount*6),0,255);
+            bloomPix[cp] = (Pixel){b,g,r,a};
+
             cp++;
         }
     }
