@@ -55,7 +55,7 @@ void TransformCamera(Vector3 position, Vector3 rotation);
 void ClearScreen();
 void FillBackground();
 
-int InitRenderer(SDL_Renderer* rend);
+int InitRenderer();
 void UpdateScreenPointer(Pixel* scrn);
 void FreeRenderer();
 void RenderModelList(ModelList models);

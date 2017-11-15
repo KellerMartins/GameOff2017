@@ -5,7 +5,7 @@ extern int GAME_SCREEN_HEIGHT;
 extern double deltaTime;
 extern int FOV;
 Pixel *screen = NULL;
-SDL_Renderer* renderer = NULL;
+extern SDL_Renderer* renderer;
 
 Vector3 cameraPosition;
 Vector3 cameraRotation;
@@ -105,7 +105,6 @@ void BlurBloom(Pixel *bloomPix, unsigned downsample,int blurAmount){
     for(i=0;i<height;i++){
         for(j=0;j<width;j++){
             //Samples in the render texture the most bright pixel (hightest alpha value) in the area
-            Pixel brightest = {0,0,0,0};
             int b = 0;
             int g = 0;
             int r= 0;
@@ -184,11 +183,7 @@ void RenderModelList(ModelList models){
     }
 }
 
-int InitRenderer(SDL_Renderer* rend){   
-    renderer = rend;
-    if(renderer == NULL){
-        return 0;
-    }
+int InitRenderer(){   
     cameraPosition = (Vector3){0,1.31,-4.8};
     cameraRotation = (Vector3){0,0,0};
 

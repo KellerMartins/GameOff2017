@@ -34,12 +34,12 @@ unsigned BLOOMS1_DOWNSCALE = 2;
 unsigned BLOOMS2_DOWNSCALE = 16;
 
 unsigned FOV = 70;
-int BLOOM_ENABLED = 0;
+int BLOOM_ENABLED = 1;
 
 int Exit = 0;
 int ErrorOcurred = 0;
-char *fpscounter;
 
+char *fpscounter;
 FC_Font* font = NULL;
 
 #ifndef __unix__
@@ -48,35 +48,83 @@ Soloud *soloud = NULL;
 
 //Time between frames
 double deltaTime = 0;
+unsigned int frameTicks;
+unsigned int mstime = 0;
+Uint64 NOW;
+Uint64 LAST;
 
 //Array with the keyboard state
 const Uint8 *keyboard_current = NULL;
 Uint8 *keyboard_last;
 SDL_Event event;
 
+//Definition of the program state, changes in the end of each state to the one defined in 'programState'
+typedef enum State { STATE_EXIT, STATE_MENU, STATE_GAME}State;
+State programState = STATE_MENU;
+
+//Track path used in GameLogic to movement
 Model TrackPath = {0,0,0,0};
 
+//Camera rotation and vectors
 extern Vector3 cameraRotation;
 extern Vector3 cameraForward;
 extern Vector3 cameraUp;
 extern Vector3 cameraRight;
 
+//Debug models :P
 Model Fred1 = {0,0,0,0};
 Model Fred2 = {0,0,0,0};
 Model Fred3 = {0,0,0,0};
 
 void InputUpdate();
 void GameUpdate();
+
+void MenuState();
+void GameState();
+void NextState();
+
+void InitProgram();
+void FreeAllocations();
+
+SDL_Renderer * renderer = NULL;
+SDL_Window* window = NULL;
+
+//Render textures
+SDL_Texture * render = NULL;
+//Define the pointer to the textures pixel array
+Pixel *renderPix;
+int renderPitch;
+
+SDL_Texture * bloomStep1 = NULL;
+Pixel *bloomS1Pix;
+int bloomS1Pitch;
+
+SDL_Texture * bloomStep2 = NULL;
+Pixel *bloomS2Pix;
+int bloomS2Pitch;
+
+//Content textures
+SDL_Texture *skyTex;
+SDL_Rect rectSky;
+
+SDL_Texture * vigTex;
+SDL_Rect rectVig;
+
+SDL_Texture * sunTex;
+SDL_Rect rectr; 
+
 int main(int argc, char *argv[]){
-	unsigned int frameTicks;
-	unsigned int mstime = 0;
 
-	SDL_Renderer * renderer = NULL;
-	SDL_Window* window = NULL;	
-	SDL_Texture * render = NULL;
-	SDL_Texture * bloomStep1 = NULL;
-	SDL_Texture * bloomStep2 = NULL;
+	//Initializes SDL, SDL_IMAGE, SoLoud, basic textures and general stuff
+	InitProgram();
+	//MenuState call, runs to other states until the we close the game
+	MenuState();
+	//Deallocate objects and systems
+	FreeAllocations();
+	return 0;
+}
 
+void InitProgram(){
 	//General initializations
 
 	//Random from start time
@@ -87,26 +135,38 @@ int main(int argc, char *argv[]){
 	soloud = Soloud_create();
 	if(Soloud_initEx(soloud,SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO)<0){
 		printf("SoLoud could not initialize! \n");
-		ErrorOcurred = 1; goto EndProgram;
+		ErrorOcurred = 1;
+		programState = STATE_EXIT;
+		Exit = 1;
+		FreeAllocations();
 	}
 	#endif
 	//Initializing SDL
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 	{
         printf("SDL could not initialize! SLD_Error: %s\n", SDL_GetError());
-		ErrorOcurred = 1; goto EndProgram;
+		ErrorOcurred = 1;
+		programState = STATE_EXIT;
+		Exit = 1;
+		FreeAllocations();
 	}
 	//Initializing SDL_Image
 	if( !(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG) )
 	{
 		printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
-		ErrorOcurred = 1; goto EndProgram;
+		ErrorOcurred = 1;
+		programState = STATE_EXIT;
+		Exit = 1;
+		FreeAllocations();
 	}
 	//Creating window
 	window = SDL_CreateWindow( "Retro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	if(window == NULL){
 		printf("Window could not be created! SDL_Error %s\n", SDL_GetError() );
-		ErrorOcurred = 1; goto EndProgram;
+		ErrorOcurred = 1;
+		programState = STATE_EXIT;
+		Exit = 1;
+		FreeAllocations();
 	}	
 	
 	//Define internal resolution
@@ -126,22 +186,18 @@ int main(int argc, char *argv[]){
 	SDL_SetTextureBlendMode(bloomStep1,SDL_BLENDMODE_ADD);
 	SDL_SetTextureBlendMode(bloomStep2,SDL_BLENDMODE_ADD);
 	
-	//Define the pointer to the textures pixel array
-	Pixel *renderPix;
-	int renderPitch = GAME_SCREEN_WIDTH * sizeof(unsigned int);
-
-	Pixel *bloomS1Pix;
-	int bloomS1Pitch = (GAME_SCREEN_WIDTH/4 ) * sizeof(unsigned int);
-	Pixel *bloomS2Pix;
-	int bloomS2Pitch = (GAME_SCREEN_WIDTH/16 ) * sizeof(unsigned int);
+	
+	renderPitch = GAME_SCREEN_WIDTH * sizeof(unsigned int);
+	bloomS1Pitch = (GAME_SCREEN_WIDTH/BLOOMS1_DOWNSCALE ) * sizeof(unsigned int);
+	bloomS2Pitch = (GAME_SCREEN_WIDTH/BLOOMS2_DOWNSCALE ) * sizeof(unsigned int);
 
 	//Initialize frame counter string
 	fpscounter = (char*)calloc(50,sizeof(char));
 
 	//Initialize FPS counter
 	InitFPS();
-	Uint64 NOW = SDL_GetPerformanceCounter();
-    Uint64 LAST = 0;
+	NOW = SDL_GetPerformanceCounter();
+    LAST = 0;
     
     //Initialize keyboard array
 	keyboard_last = (Uint8 *)calloc(284,sizeof(Uint8));
@@ -155,7 +211,10 @@ int main(int argc, char *argv[]){
 
 	if(!InitRenderer(renderer)){
 		printf("Error initializing renderer!\n");
-		ErrorOcurred = 1; goto EndProgram;
+		ErrorOcurred = 1;
+		programState = STATE_EXIT;
+		Exit = 1;
+		FreeAllocations();
 	}
 
 	//Sun Texture
@@ -163,45 +222,43 @@ int main(int argc, char *argv[]){
 	if(sunSurf == NULL){
 		printf("Error opening image!\n");
 	}
-	SDL_Texture * sunTex = SDL_CreateTextureFromSurface(renderer, sunSurf);
+	sunTex = SDL_CreateTextureFromSurface(renderer, sunSurf);
 	SDL_FreeSurface(sunSurf);
 	int sunW, sunH;
 	SDL_QueryTexture(sunTex, NULL, NULL, &sunW, &sunH);
 	float sunRatio = sunH/(float)sunW;
-	SDL_Rect rectr; rectr.x = GAME_SCREEN_WIDTH/2.67; rectr.y = GAME_SCREEN_HEIGHT/4.5f; rectr.w = GAME_SCREEN_WIDTH/4; rectr.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
+	rectr.x = GAME_SCREEN_WIDTH/2.67; rectr.y = GAME_SCREEN_HEIGHT/4.5f; rectr.w = GAME_SCREEN_WIDTH/4; rectr.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
-
-	//How much the sun must move as the camera rotates
-	Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
 
 	//Sky texture
 	SDL_Surface * skySurf = IMG_Load("Textures/Sky.png");
 	if(skySurf == NULL){
 		printf("Error opening image!\n");
 	}
-	SDL_Texture * skyTex = SDL_CreateTextureFromSurface(renderer, skySurf);
+	skyTex = SDL_CreateTextureFromSurface(renderer, skySurf);
 	SDL_FreeSurface(skySurf);
 	int skyW, skyH;
 	SDL_QueryTexture(skyTex, NULL, NULL, &skyW, &skyH);
 	float skyRatio = skyH/(float)skyW;
-	SDL_Rect rectSky; rectSky.x = 0; rectSky.y = 0; rectSky.w = GAME_SCREEN_WIDTH; rectSky.h = GAME_SCREEN_WIDTH*skyRatio; 
+	rectSky.x = 0; rectSky.y = 0; rectSky.w = GAME_SCREEN_WIDTH; rectSky.h = GAME_SCREEN_WIDTH*skyRatio; 
 
 	//Vignette Texture
 	SDL_Surface * vigSurf = IMG_Load("Textures/Vignette.png");
 	if(vigSurf == NULL){
 		printf("Error opening image!\n");
 	}
-	SDL_Texture * vigTex = SDL_CreateTextureFromSurface(renderer, vigSurf);
+	vigTex = SDL_CreateTextureFromSurface(renderer, vigSurf);
 	SDL_FreeSurface(vigSurf);
 	int vigW, vigH;
 	SDL_QueryTexture(vigTex, NULL, NULL, &vigW, &vigH);
 	float vigRatio = vigH/(float)vigW;
-	SDL_Rect rectVig; rectVig.x = 0; rectVig.y = 0; rectVig.w = GAME_SCREEN_WIDTH; rectVig.h = GAME_SCREEN_WIDTH*vigRatio;
+	rectVig.x = 0; rectVig.y = 0; rectVig.w = GAME_SCREEN_WIDTH; rectVig.h = GAME_SCREEN_WIDTH*vigRatio;
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
+}
 
+void MenuState(){
 	//Game title Texture
-	//(Disabled for now)
-	/*SDL_Surface * titleSurf = IMG_Load("Textures/Title.png");
+	SDL_Surface * titleSurf = IMG_Load("Textures/Title.png");
 	if(titleSurf == NULL){
 		printf("Error opening image!\n");
 	}
@@ -213,6 +270,7 @@ int main(int argc, char *argv[]){
 	SDL_Rect rectTitle; rectTitle.x = GAME_SCREEN_WIDTH/12; rectTitle.y = 0; rectTitle.w = GAME_SCREEN_WIDTH/1.2; rectTitle.h = GAME_SCREEN_WIDTH/1.2 * titleRatio;
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 
+	//Game options models
 	Model Play = LoadModel("Models/Play.txt");
 	Play.color = (Pixel){100,30,255,255};
 	Model Options = LoadModel("Models/Options.txt");
@@ -220,10 +278,110 @@ int main(int argc, char *argv[]){
 	Model ExitModel = LoadModel("Models/Exit.txt");
 	ExitModel.color = (Pixel){100,30,255,255};
 
+	Model Plane = LoadModel("Models/Plane.txt");
+	Plane.color = (Pixel){255,60,30,100};
+	Plane.position.y = -5;
 
-	//TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,1.3,0});
-	*/
+	TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,0,0});
 
+	//Menu loop
+	while (!Exit)
+	{
+		//Ms tick time
+		frameTicks = SDL_GetTicks();
+		LAST = NOW;
+		NOW = SDL_GetPerformanceCounter();
+		deltaTime = (double)((NOW - LAST)*1000 / SDL_GetPerformanceFrequency() )*0.001;
+
+		Plane.position.z = fmod(Plane.position.z+50*deltaTime,10.0);
+		InputUpdate();
+		if (GetKeyDown(SDL_SCANCODE_RETURN))
+		{
+			programState = STATE_GAME;
+			Exit = 1;
+		}
+
+		if (GetKey(SDL_SCANCODE_ESCAPE))
+		{
+			programState = STATE_EXIT;
+			Exit = 1;
+		}
+
+		
+		//Rendering
+		//Locks texture to manual modification
+		SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
+			UpdateScreenPointer(renderPix);
+			ClearScreen();
+
+			RenderModel(&Play);
+			RenderModel(&Options);
+			RenderModel(&ExitModel);
+			RenderModel(&Plane);
+
+			if(BLOOM_ENABLED){
+				//Process first bloom pass
+				SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
+					RenderBloom(bloomS1Pix,BLOOMS1_DOWNSCALE);
+				SDL_UnlockTexture(bloomStep1);
+
+				//Process second bloom pass
+				SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
+					RenderBloom(bloomS2Pix,BLOOMS2_DOWNSCALE);
+					BlurBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,4);
+				SDL_UnlockTexture(bloomStep2);
+			}
+		SDL_UnlockTexture(render);
+
+		//Clears screen and blit the render texture into the screen
+		SDL_RenderClear(renderer);
+		SDL_RenderCopy(renderer, skyTex, NULL, &rectSky);
+		SDL_RenderCopy(renderer, render, NULL, NULL);
+		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
+
+		//How much the sun must move as the camera rotates
+		Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
+		rectr.x = cameraRotation.y*fmod(sunRot.x,180) + GAME_SCREEN_WIDTH/2.67;
+		rectr.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
+		SDL_RenderCopy(renderer, sunTex, NULL, &rectr);
+
+		if(BLOOM_ENABLED){
+			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
+			SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
+		}
+		//Render menu screen
+		SDL_RenderCopy(renderer, titleTex, NULL, &rectTitle);
+
+		//Draw stats text
+        FC_DrawAlign(font, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
+
+		//Passes rendered image to screen
+		SDL_RenderPresent(renderer);
+
+		//Calculates the time it took to process this iteration
+		mstime = SDL_GetTicks()-frameTicks;
+		ProcessFPS();
+		
+		//Waits for at least 60 frames to be elapsed
+		while( SDL_GetTicks()-frameTicks <  (1000/FRAMES_PER_SECOND) ){ }
+	}
+	
+	//End of main menu
+
+	FreeModel(&Play);
+	FreeModel(&Options);
+	FreeModel(&ExitModel);
+	FreeModel(&Plane);
+
+	if(titleTex!=NULL)
+		SDL_DestroyTexture(titleTex);
+
+	//Runs next state
+	NextState();
+}
+
+
+void GameState(){
 	Model Track = LoadModel("Models/TestTrack.txt");
 	TrackPath = LoadModel("Models/TestTrackPath.txt");
 
@@ -246,6 +404,11 @@ int main(int argc, char *argv[]){
 
 		InputUpdate();
 		GameUpdate();
+		if (GetKeyDown(SDL_SCANCODE_RETURN))
+		{
+			programState = STATE_MENU;
+			Exit = 1;
+		}
 		
 		//Locks texture to manual modification
 		SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
@@ -281,6 +444,8 @@ int main(int argc, char *argv[]){
 		SDL_RenderCopy(renderer, render, NULL, NULL);
 		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
 
+		//How much the sun must move as the camera rotates
+		Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
 		rectr.x = cameraRotation.y*fmod(sunRot.x,180) + GAME_SCREEN_WIDTH/2.67;
 		rectr.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
 		SDL_RenderCopy(renderer, sunTex, NULL, &rectr);
@@ -306,13 +471,8 @@ int main(int argc, char *argv[]){
 		while( SDL_GetTicks()-frameTicks <  (1000/FRAMES_PER_SECOND) ){ }
 	}
 	
-	//End of the program
+	//End of the game
 
-	//Non critical dealocations
-	free(fpscounter);
-	free(keyboard_last);
-	
-	FreeRenderer();
 	FreeModel(&Track);
 	FreeModel(&TrackPath);
 
@@ -321,51 +481,25 @@ int main(int argc, char *argv[]){
 	FreeModel(&Fred3);
 
 	FreeCars();
-	//FreeModel(&Play);
-	//FreeModel(&Options);
-	//FreeModel(&ExitModel);
 
-	if(sunTex!=NULL)
-	SDL_DestroyTexture(sunTex);
+	//Runs next state
+	NextState();
+}
 
-	if(skyTex!=NULL)
-		SDL_DestroyTexture(skyTex);
-
-	if(vigTex!=NULL)
-		SDL_DestroyTexture(vigTex);
-
-	//(Disabled for now)
-	//if(titleTex!=NULL)
-	//	SDL_DestroyTexture(titleTex);
-
-	if(font!=NULL)
-	FC_FreeFont(font);
-
-	EndProgram:
-	//Systems dealocation
-
-	#ifndef __unix__
-	if(soloud!=NULL){
-		Soloud_deinit(soloud);
-		Soloud_destroy(soloud);
+void NextState(){
+	Exit = 0;
+	switch(programState){
+		case STATE_EXIT:
+			//Return states until gets back to main call and ends
+			return;
+		break;
+		case STATE_MENU:
+			MenuState();
+		break;
+		case STATE_GAME:
+			GameState();
+		break;
 	}
-	#endif		
-
-	if(render!=NULL)
-		SDL_DestroyTexture(render);
-
-	if(renderer!=NULL)
-		SDL_DestroyRenderer(renderer);
-
-    if(window!=NULL)
-		SDL_DestroyWindow( window );
-
-	if(SDL_WasInit(SDL_INIT_EVERYTHING)!=0)
-    	SDL_Quit();
-
-	if(ErrorOcurred)
-		system("pause");
-    return 0;
 }
 
 void InputUpdate(){
@@ -376,7 +510,8 @@ void InputUpdate(){
     while (SDL_PollEvent(&event)) {
         switch (event.type)
         {
-            case SDL_QUIT:
+			case SDL_QUIT:
+				programState = STATE_EXIT;
                 Exit = 1;
                 break;
         }
@@ -448,6 +583,7 @@ void GameUpdate(){
 
 	if (GetKey(SDL_SCANCODE_ESCAPE))
 	{
+		programState = STATE_MENU;
 		Exit = 1;
 	}
 
@@ -473,4 +609,48 @@ void GameUpdate(){
 	}
 	CarMovement(0);
 	CarCamera(0);
+}
+
+void FreeAllocations(){
+	//End of the program
+	//Non critical dealocations
+	free(fpscounter);
+	free(keyboard_last);	
+	FreeRenderer();
+
+	if(sunTex!=NULL)
+		SDL_DestroyTexture(sunTex);
+
+	if(skyTex!=NULL)
+		SDL_DestroyTexture(skyTex);
+
+	if(vigTex!=NULL)
+		SDL_DestroyTexture(vigTex);
+
+	if(font!=NULL)
+	FC_FreeFont(font);
+
+	//Systems dealocation
+
+	#ifndef __unix__
+	if(soloud!=NULL){
+		Soloud_deinit(soloud);
+		Soloud_destroy(soloud);
+	}
+	#endif		
+
+	if(render!=NULL)
+		SDL_DestroyTexture(render);
+
+	if(renderer!=NULL)
+		SDL_DestroyRenderer(renderer);
+
+    if(window!=NULL)
+		SDL_DestroyWindow( window );
+
+	if(SDL_WasInit(SDL_INIT_EVERYTHING)!=0)
+    	SDL_Quit();
+
+	if(ErrorOcurred)
+		system("pause");
 }
