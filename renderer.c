@@ -68,7 +68,7 @@ void ClearScreen(){
     }
 }
 
-void RenderBloom(Pixel *bloomPix, unsigned downsample){
+void RenderBloom(Pixel *bloomPix, unsigned downsample, float multiplier){
     unsigned width = GAME_SCREEN_WIDTH/downsample,height = GAME_SCREEN_HEIGHT/downsample;
     int i,j,k,l,cp = 0;
     //Iterates for each pixel in the bloom texture
@@ -89,7 +89,7 @@ void RenderBloom(Pixel *bloomPix, unsigned downsample){
             if(brightest.a==0.2f*255){
                 bloomPix[cp] = (Pixel){0,0,0,0};
             }else{
-                avgBright =clamp(avgBright/(downsample*downsample),0,255);
+                avgBright =clamp(multiplier*avgBright/(downsample*downsample),0,255);
                 brightest.a = avgBright;
                 bloomPix[cp] = (Pixel){brightest.b,brightest.g,brightest.r,avgBright};
             }

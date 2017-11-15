@@ -61,7 +61,7 @@ void FreeRenderer();
 void RenderModelList(ModelList models);
 void RenderModel(Model *model);
 
-void RenderBloom(Pixel *bloomPix, unsigned downsample);
+void RenderBloom(Pixel *bloomPix, unsigned downsample, float multiplier);
 void BlurBloom(Pixel *bloomPix, unsigned downsample,int blurAmount);
 
 void DrawLine(int x0, int y0, int x1, int y1,Pixel color);
