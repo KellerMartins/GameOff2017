@@ -187,7 +187,7 @@ void CarMovement (int player)
         Vector3 PLP1 = subtract(p1,players[player].last);
         NormalizeVector(&PLP1);
         players[player].objRotation.x = 90-((1/PI_OVER_180)*acos(dot(up,PLP1)));
-        printf("%f\n",90-((1/PI_OVER_180)*acos(dot(up,PLP1))));
+        //printf("%f\n",90-((1/PI_OVER_180)*acos(dot(up,PLP1))));
 
     }else{
         //If car is between the closest point and the next
@@ -196,7 +196,7 @@ void CarMovement (int player)
         //Set x axis rotation (to incline the car based on the slope)
         NormalizeVector(&P1P2);
         players[player].objRotation.x = 90-((1/PI_OVER_180)*acos(dot(up,P1P2)));
-        printf("%f\n",90-((1/PI_OVER_180)*acos(dot(up,P1P2))));
+        //printf("%f\n",90-((1/PI_OVER_180)*acos(dot(up,P1P2))));
     }
 
     //Rotate car model

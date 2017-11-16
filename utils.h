@@ -48,4 +48,6 @@ Vector3 Reflection(Vector3 *v1,Vector3 *v2);
 int Step(float edge, float x );
 float Smoothstep(float edge0, float edge1, float x);
 float lerp(float v0, float v1, float t);
+int modulus(int a, int b);
+float fmodulus(float a, float b);
 #endif

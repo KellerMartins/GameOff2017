@@ -115,15 +115,18 @@ SDL_Rect rectVig;
 float vigRatio;
 
 SDL_Texture * sunTex;
-SDL_Rect rectr; 
+SDL_Rect rectSun; 
 float sunRatio;
 
 int main(int argc, char *argv[]){
 
 	//Initializes SDL, SDL_IMAGE, SoLoud, basic textures and general stuff
 	InitProgram();
+	
 	//MenuState call, runs to other states until the we close the game
-	MenuState();
+	if (programState != STATE_EXIT) //If initialization failed, go to free
+		MenuState();
+
 	//Deallocate objects and systems
 	FreeAllocations();
 	return 0;
@@ -164,6 +167,16 @@ void InitProgram(){
 		Exit = 1;
 		FreeAllocations();
 	}
+
+	//Get user screen resolution
+	SDL_DisplayMode resl;
+	SDL_GetCurrentDisplayMode(0,&resl);
+	SCREEN_WIDTH = resl.w;
+	SCREEN_HEIGHT = resl.h;
+	if(SCREEN_WIDTH == 1920) FOV = 55;
+	if(SCREEN_WIDTH == 1366) FOV = 70;
+	if(SCREEN_WIDTH == 1280) FOV = 80;
+
 	//Creating window
 	window = SDL_CreateWindow( "Retro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	if(window == NULL){
@@ -232,7 +245,7 @@ void InitProgram(){
 	int sunW, sunH;
 	SDL_QueryTexture(sunTex, NULL, NULL, &sunW, &sunH);
 	sunRatio = sunH/(float)sunW;
-	rectr.x = GAME_SCREEN_WIDTH/2.67; rectr.y = GAME_SCREEN_HEIGHT/4.5f; rectr.w = GAME_SCREEN_WIDTH/4; rectr.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
+	rectSun.x = GAME_SCREEN_WIDTH/2.67; rectSun.y = GAME_SCREEN_HEIGHT/4.5f; rectSun.w = GAME_SCREEN_WIDTH/4; rectSun.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 
 	//Sky texture
@@ -407,8 +420,8 @@ void MenuState(){
 						StartRace.enabled = 1;
 						BackPlay.enabled = 1;
 						
-						StartRace.position.x = 20;
-						BackPlay.position.x = 20;
+						StartRace.position.x = 30;
+						BackPlay.position.x = 30;
 					break;
 					//Title to options (Option 1)
 					case 1:
@@ -545,13 +558,13 @@ void MenuState(){
 				}
 				//If Play game screen options are active, put them at left and disable
 				if(StartRace.enabled){
-					if(StartRace.position.x <20){
-						StartRace.position.x += 50*deltaTime;
+					if(StartRace.position.x <30){
+						StartRace.position.x += 60*deltaTime;
 					}else{
 						StartRace.enabled = 0;
 					}
-					if(BackPlay.position.x < 20){
-						BackPlay.position.x += 40*deltaTime;
+					if(BackPlay.position.x < 30){
+						BackPlay.position.x += 50*deltaTime;
 					}else{
 						BackPlay.enabled = 0;
 					}
@@ -638,13 +651,13 @@ void MenuState(){
 					//Make arrow reappear and move StartRace and BackPlay to position
 					Arrow.rotation = StartRace.rotation;
 					if(StartRace.position.x > 2){
-						StartRace.position.x -= 50*deltaTime;
+						StartRace.position.x -= 58*deltaTime;
 					}else{
 						StartRace.position.x = 2;
 					}
 
 					if(BackPlay.position.x > 2){
-						BackPlay.position.x -= 50*deltaTime;
+						BackPlay.position.x -= 58*deltaTime;
 					}else{
 						BackPlay.position.x = 2;
 					}
@@ -812,11 +825,16 @@ void MenuState(){
 		SDL_RenderCopy(renderer, render, NULL, NULL);
 		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
 
-		//How much the sun must move as the camera rotates
+		//Constant of how much the sun must move based in the FOV
 		Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
-		rectr.x = cameraRotation.y*fmod(sunRot.x,180) + GAME_SCREEN_WIDTH/2.67;
-		rectr.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
-		SDL_RenderCopy(renderer, sunTex, NULL, &rectr);
+		float sunAngle = fmodulus(cameraRotation.y,360.0);
+
+		//Derivative of |sin(x/2)|, used to position sun based on camera angle
+		float mult = sin(PI_OVER_180*sunAngle)/(4*fabs(cos(PI_OVER_180*sunAngle/2.0)));
+
+		rectSun.x = mult*180* sunRot.x + GAME_SCREEN_WIDTH/2.67;
+		rectSun.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
+		SDL_RenderCopy(renderer, sunTex, NULL, &rectSun);
 
 		if(BLOOM_ENABLED){
 			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
@@ -926,11 +944,17 @@ void GameState(){
 		SDL_RenderCopy(renderer, render, NULL, NULL);
 		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
 
-		//How much the sun must move as the camera rotates
+		//Constant of how much the sun must move based in the FOV
 		Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
-		rectr.x = cameraRotation.y*fmod(sunRot.x,180) + GAME_SCREEN_WIDTH/2.67;
-		rectr.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
-		SDL_RenderCopy(renderer, sunTex, NULL, &rectr);
+		float sunAngle = fmodulus(cameraRotation.y,360.0);
+
+		//Derivative of |sin(x/2)|, used to position sun based on camera angle
+		float mult = sin(PI_OVER_180*sunAngle)/(4*fabs(cos(PI_OVER_180*sunAngle/2.0)));
+
+		rectSun.x = mult*180* sunRot.x + GAME_SCREEN_WIDTH/2.67;
+
+		rectSun.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
+		SDL_RenderCopy(renderer, sunTex, NULL, &rectSun);
 
 		if(BLOOM_ENABLED){
 			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
@@ -997,6 +1021,11 @@ void ChangeResolution(int r){
 	//Set window resolution
 	SDL_SetWindowSize(window,SCREEN_WIDTH,SCREEN_HEIGHT);
 
+	//Reset FOV
+	if(SCREEN_WIDTH == 1920) FOV = 55;
+	if(SCREEN_WIDTH == 1366) FOV = 70;
+	if(SCREEN_WIDTH == 1280) FOV = 80;
+
 	//Recalculate values and recreate textures
 	GAME_SCREEN_WIDTH = SCREEN_WIDTH/SCREEN_SCALE;
 	GAME_SCREEN_HEIGHT = SCREEN_HEIGHT/SCREEN_SCALE;
@@ -1020,11 +1049,16 @@ void ChangeResolution(int r){
 	bloomS1Pitch = (GAME_SCREEN_WIDTH/BLOOMS1_DOWNSCALE ) * sizeof(unsigned int);
 	bloomS2Pitch = (GAME_SCREEN_WIDTH/BLOOMS2_DOWNSCALE ) * sizeof(unsigned int);
 
+	FC_FreeFont(font);
+	font = FC_CreateFont();  
+	if(!FC_LoadFont(font, renderer, "Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+        printf("Font: Error loading font!\n");
+	}
 
-	rectr.x = GAME_SCREEN_WIDTH/2.67; 
-	rectr.y = GAME_SCREEN_HEIGHT/4.5f; 
-	rectr.w = GAME_SCREEN_WIDTH/4; 
-	rectr.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
+	rectSun.x = GAME_SCREEN_WIDTH/2.67; 
+	rectSun.y = GAME_SCREEN_HEIGHT/4.5f; 
+	rectSun.w = GAME_SCREEN_WIDTH/4; 
+	rectSun.h = (GAME_SCREEN_WIDTH/4)*sunRatio; 
 
 	rectSky.w = GAME_SCREEN_WIDTH; 
 	rectSky.h = GAME_SCREEN_WIDTH*skyRatio; 
