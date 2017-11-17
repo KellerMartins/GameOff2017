@@ -158,6 +158,7 @@ Model LoadModel(char modelPath[]){
     for(i=0;i<m.eCount;i++){
         fscanf(file,"%d %d", &m.edges[i].v[0], &m.edges[i].v[1]);
     }
+    fclose(file);
 
     m.position = (Vector3){0,0,0};
     m.rotation = (Vector3){0,0,0};

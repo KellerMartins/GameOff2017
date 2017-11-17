@@ -24,6 +24,11 @@ void CarHandling(int player, int dir);
 void CarMovement (int players);
 void CarCamera(int player);
 
+void AIMovement();
+
 void PointInPath(Vector3 point, Vector3 direction, Vector3 *closest, Vector3 *next);
+
+void LoadTrack(char trackPath[]);
+void FreeTrack();
 
 #endif

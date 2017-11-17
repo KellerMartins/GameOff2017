@@ -880,10 +880,10 @@ void MenuState(){
 	NextState();
 }
 
-
+extern Model TrackPath;
+extern Model TrackModel;
 void GameState(){
-	Model Track = LoadModel("Models/TestTrack.txt");
-	TrackPath = LoadModel("Models/TestTrackPath.txt");
+	LoadTrack("Tracks/TestTrack");
 
 	Fred1 = LoadModel("Models/Fred.txt");
 	Fred1.color = (Pixel){0,0,255,255};
@@ -915,7 +915,7 @@ void GameState(){
 			UpdateScreenPointer(renderPix);
 			ClearScreen();
 			
-			RenderModel(&Track);
+			RenderModel(&TrackModel);
 			RenderModel(&TrackPath);
 
 			RenderModel(&Fred1);
@@ -977,8 +977,7 @@ void GameState(){
 	
 	//End of the game
 
-	FreeModel(&Track);
-	FreeModel(&TrackPath);
+	FreeTrack();
 
 	FreeModel(&Fred1);
 	FreeModel(&Fred2);
@@ -1174,6 +1173,8 @@ void GameUpdate(){
 	}
 	CarMovement(0);
 	CarCamera(0);
+
+	AIMovement();
 }
 
 void FreeAllocations(){
