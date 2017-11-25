@@ -58,8 +58,8 @@ f = open(filePath, 'w')
 #Track width
 f.write('10.117 ')
 
-#Start line
-ob = bpy.data.objects['Start']
+#End line
+ob = bpy.data.objects['End']
 f.write('{} {} {} '.format(ob.location.x, ob.location.y, ob.location.z))
 
 #Car Spawns

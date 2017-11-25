@@ -204,26 +204,26 @@ void RenderModel(Model *model){
 
     int e,v;
     float x,y,z;
-    float focLen = 1000/tan((FOV*PI_OVER_180)/2);
+    float focLen = 1000/tan((FOV*DEG2RAD)/2);
     //Object Rotation
-    float sinx = sin((model->rotation.x)* PI_OVER_180);
-    float cosx = cos((model->rotation.x)* PI_OVER_180);
+    float sinx = sin((model->rotation.x)* DEG2RAD);
+    float cosx = cos((model->rotation.x)* DEG2RAD);
 
-    float siny = sin((model->rotation.y) * PI_OVER_180);
-    float cosy = cos((model->rotation.y) * PI_OVER_180);
+    float siny = sin((model->rotation.y) * DEG2RAD);
+    float cosy = cos((model->rotation.y) * DEG2RAD);
     
-    float sinz = sin((model->rotation.z) * PI_OVER_180);
-    float cosz = cos((model->rotation.z) * PI_OVER_180);
+    float sinz = sin((model->rotation.z) * DEG2RAD);
+    float cosz = cos((model->rotation.z) * DEG2RAD);
 
     //Camera Rotation
-    float csinx = sin((cameraRotation.x)* PI_OVER_180);
-    float ccosx = cos((cameraRotation.x)* PI_OVER_180);
+    float csinx = sin((cameraRotation.x)* DEG2RAD);
+    float ccosx = cos((cameraRotation.x)* DEG2RAD);
 
-    float csiny = sin((cameraRotation.y) * PI_OVER_180);
-    float ccosy = cos((cameraRotation.y) * PI_OVER_180);
+    float csiny = sin((cameraRotation.y) * DEG2RAD);
+    float ccosy = cos((cameraRotation.y) * DEG2RAD);
     
-    float csinz = sin((cameraRotation.z) * PI_OVER_180);
-    float ccosz = cos((cameraRotation.z) * PI_OVER_180);
+    float csinz = sin((cameraRotation.z) * DEG2RAD);
+    float ccosz = cos((cameraRotation.z) * DEG2RAD);
 
     //Pre calculating terms (Obj rotation)
     float rxt1 = cosy*cosz, rxt2 = (cosz*sinx*siny - cosx*sinz), rxt3 = (cosx*cosz*siny + sinx*sinz);
@@ -327,14 +327,14 @@ void DrawLine(int x0, int y0, int x1, int y1,Pixel color) {
 Vector3 RotatePoint(Vector3 p, Vector3 r, Vector3 pivot){
         float rotx,roty,rotz,x,y,z;
     
-        float sinx = sin(r.x* PI_OVER_180);
-        float cosx = cos(r.x* PI_OVER_180);
+        float sinx = sin(r.x* DEG2RAD);
+        float cosx = cos(r.x* DEG2RAD);
     
-        float siny = sin(r.y * PI_OVER_180);
-        float cosy = cos(r.y * PI_OVER_180);
+        float siny = sin(r.y * DEG2RAD);
+        float cosy = cos(r.y * DEG2RAD);
             
-        float sinz = sin(r.z * PI_OVER_180);
-        float cosz = cos(r.z * PI_OVER_180);
+        float sinz = sin(r.z * DEG2RAD);
+        float cosz = cos(r.z * DEG2RAD);
     
         x = p.x - pivot.x;
         y = p.y - pivot.y;

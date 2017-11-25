@@ -40,7 +40,9 @@ int Exit = 0;
 int ErrorOcurred = 0;
 
 char *fpscounter;
-FC_Font* font = NULL;
+FC_Font* fontSmall = NULL;
+FC_Font* fontMedium = NULL;
+FC_Font* fontBig = NULL;
 
 #ifndef __unix__
 Soloud *soloud = NULL;
@@ -221,9 +223,19 @@ void InitProgram(){
 	keyboard_last = (Uint8 *)calloc(284,sizeof(Uint8));
 	keyboard_current = SDL_GetKeyboardState(NULL);
 
-	//Initialize font
-	font = FC_CreateFont();  
-	if(!FC_LoadFont(font, renderer, "Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+	//Initialize fonts
+	fontSmall = FC_CreateFont();  
+	if(!FC_LoadFont(fontSmall, renderer, "Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+        printf("Font: Error loading font!\n");
+	}
+
+	fontMedium = FC_CreateFont();  
+	if(!FC_LoadFont(fontMedium, renderer, "Visitor.ttf",72, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+        printf("Font: Error loading font!\n");
+	}
+
+	fontBig = FC_CreateFont();  
+	if(!FC_LoadFont(fontBig, renderer, "Visitor.ttf",260, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
         printf("Font: Error loading font!\n");
 	}
 
@@ -830,7 +842,7 @@ void MenuState(){
 		float sunAngle = fmodulus(cameraRotation.y,360.0);
 
 		//Derivative of |sin(x/2)|, used to position sun based on camera angle
-		float mult = sin(PI_OVER_180*sunAngle)/(4*fabs(cos(PI_OVER_180*sunAngle/2.0)));
+		float mult = sin(DEG2RAD*sunAngle)/(4*fabs(cos(DEG2RAD*sunAngle/2.0)));
 
 		rectSun.x = mult*180* sunRot.x + GAME_SCREEN_WIDTH/2.67;
 		rectSun.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
@@ -844,7 +856,7 @@ void MenuState(){
 		SDL_RenderCopy(renderer, titleTex, NULL, &rectTitle);
 
 		//Draw stats text
-        FC_DrawAlign(font, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
+        FC_DrawAlign(fontSmall, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
 
 		//Passes rendered image to screen
 		SDL_RenderPresent(renderer);
@@ -949,7 +961,7 @@ void GameState(){
 		float sunAngle = fmodulus(cameraRotation.y,360.0);
 
 		//Derivative of |sin(x/2)|, used to position sun based on camera angle
-		float mult = sin(PI_OVER_180*sunAngle)/(4*fabs(cos(PI_OVER_180*sunAngle/2.0)));
+		float mult = sin(DEG2RAD*sunAngle)/(4*fabs(cos(DEG2RAD*sunAngle/2.0)));
 
 		rectSun.x = mult*180* sunRot.x + GAME_SCREEN_WIDTH/2.67;
 
@@ -960,9 +972,17 @@ void GameState(){
 			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
 			SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
 		}
-
+		int playerPos = GetPlayerRank(0);
+		FC_Draw(fontMedium, renderer,10,0, "Time: %3.2f",550.0f);
+		FC_Draw(fontBig, renderer,50,FC_GetLineHeight(fontMedium)/2, "%d", playerPos);
+		FC_Draw(fontSmall, renderer,
+				50 + FC_GetWidth(fontBig, "%d", playerPos)+FC_GetWidth(fontSmall, "st"),
+				FC_GetLineHeight(fontBig) - FC_GetLineHeight(fontMedium)/2,
+				"%s", playerPos==1? "st": (playerPos==2? "nd": (playerPos==3? "rd":"th"))
+				);
+		
 		//Draw stats text
-        FC_DrawAlign(font, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
+        FC_DrawAlign(fontSmall, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
 
 		//Passes rendered image to screen
 		SDL_RenderPresent(renderer);
@@ -1048,9 +1068,22 @@ void ChangeResolution(int r){
 	bloomS1Pitch = (GAME_SCREEN_WIDTH/BLOOMS1_DOWNSCALE ) * sizeof(unsigned int);
 	bloomS2Pitch = (GAME_SCREEN_WIDTH/BLOOMS2_DOWNSCALE ) * sizeof(unsigned int);
 
-	FC_FreeFont(font);
-	font = FC_CreateFont();  
-	if(!FC_LoadFont(font, renderer, "Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+	FC_FreeFont(fontSmall);
+	FC_FreeFont(fontMedium);
+	FC_FreeFont(fontBig);
+
+	fontSmall = FC_CreateFont();  
+	if(!FC_LoadFont(fontSmall, renderer, "Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+        printf("Font: Error loading font!\n");
+	}
+
+	fontMedium = FC_CreateFont();  
+	if(!FC_LoadFont(fontMedium, renderer, "Visitor.ttf",72, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+        printf("Font: Error loading font!\n");
+	}
+
+	fontBig = FC_CreateFont();  
+	if(!FC_LoadFont(fontBig, renderer, "Visitor.ttf",260, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
         printf("Font: Error loading font!\n");
 	}
 
@@ -1193,9 +1226,14 @@ void FreeAllocations(){
 	if(vigTex!=NULL)
 		SDL_DestroyTexture(vigTex);
 
-	if(font!=NULL)
-	FC_FreeFont(font);
+	if(fontSmall!=NULL)
+	FC_FreeFont(fontSmall);
 
+	if(fontMedium!=NULL)
+	FC_FreeFont(fontMedium);
+
+	if(fontBig!=NULL)
+	FC_FreeFont(fontBig);
 	//Systems dealocation
 
 	#ifndef __unix__
