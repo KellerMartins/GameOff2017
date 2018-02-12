@@ -5,7 +5,7 @@ extern int GAME_SCREEN_HEIGHT;
 extern double deltaTime;
 extern int FOV;
 Pixel *screen = NULL;
-SDL_Renderer* renderer = NULL;
+extern SDL_Renderer* renderer;
 
 Vector3 cameraPosition;
 Vector3 cameraRotation;
@@ -68,7 +68,7 @@ void ClearScreen(){
     }
 }
 
-void RenderBloom(Pixel *bloomPix, unsigned downsample){
+void RenderDownscale(Pixel *bloomPix, unsigned downsample, float multiplier){
     unsigned width = GAME_SCREEN_WIDTH/downsample,height = GAME_SCREEN_HEIGHT/downsample;
     int i,j,k,l,cp = 0;
     //Iterates for each pixel in the bloom texture
@@ -89,8 +89,7 @@ void RenderBloom(Pixel *bloomPix, unsigned downsample){
             if(brightest.a==0.2f*255){
                 bloomPix[cp] = (Pixel){0,0,0,0};
             }else{
-                avgBright =clamp(avgBright/(downsample*downsample),0,255);
-                brightest.a = avgBright;
+                avgBright =clamp(multiplier*avgBright/(downsample*downsample),0,255);
                 bloomPix[cp] = (Pixel){brightest.b,brightest.g,brightest.r,avgBright};
             }
             cp++;
@@ -105,7 +104,6 @@ void BlurBloom(Pixel *bloomPix, unsigned downsample,int blurAmount){
     for(i=0;i<height;i++){
         for(j=0;j<width;j++){
             //Samples in the render texture the most bright pixel (hightest alpha value) in the area
-            Pixel brightest = {0,0,0,0};
             int b = 0;
             int g = 0;
             int r= 0;
@@ -115,19 +113,19 @@ void BlurBloom(Pixel *bloomPix, unsigned downsample,int blurAmount){
                     if((i*width + j)+ l + k*width > width*height) continue; 
 
                     Pixel current = bloomPix[(i + k)*width + j+l];
-                    int val = (k==0? 1 : abs(k)) * (l==0? 1 : abs(l));
-                    a += current.a/val;
-                    r += current.r/val;
-                    g += current.g/val;
-                    b += current.b/val;
+                    //int val = (k==0? 1 : abs(k)) * (l==0? 1 : abs(l));
+                    a += current.a;
+                    r += current.r;
+                    g += current.g;
+                    b += current.b;
                     
                 }
             }
 
-            a =clamp(a/(blurAmount*6),0,255);
-            r =clamp(r/(blurAmount*6),0,255);
-            g =clamp(g/(blurAmount*6),0,255);
-            b =clamp(b/(blurAmount*6),0,255);
+            a =clamp(a/(blurAmount*15),0,255);
+            r =clamp(r/(blurAmount*15),0,255);
+            g =clamp(g/(blurAmount*15),0,255);
+            b =clamp(b/(blurAmount*15),0,255);
             bloomPix[cp] = (Pixel){b,g,r,a};
 
             cp++;
@@ -159,6 +157,7 @@ Model LoadModel(char modelPath[]){
     for(i=0;i<m.eCount;i++){
         fscanf(file,"%d %d", &m.edges[i].v[0], &m.edges[i].v[1]);
     }
+    fclose(file);
 
     m.position = (Vector3){0,0,0};
     m.rotation = (Vector3){0,0,0};
@@ -184,11 +183,7 @@ void RenderModelList(ModelList models){
     }
 }
 
-int InitRenderer(SDL_Renderer* rend){   
-    renderer = rend;
-    if(renderer == NULL){
-        return 0;
-    }
+int InitRenderer(){   
     cameraPosition = (Vector3){0,1.31,-4.8};
     cameraRotation = (Vector3){0,0,0};
 
@@ -208,26 +203,26 @@ void RenderModel(Model *model){
 
     int e,v;
     float x,y,z;
-    float focLen = 1000/tan((FOV*PI_OVER_180)/2);
+    float focLen = 1000/tan((FOV*DEG2RAD)/2);
     //Object Rotation
-    float sinx = sin((model->rotation.x)* PI_OVER_180);
-    float cosx = cos((model->rotation.x)* PI_OVER_180);
+    float sinx = sin((model->rotation.x)* DEG2RAD);
+    float cosx = cos((model->rotation.x)* DEG2RAD);
 
-    float siny = sin((model->rotation.y) * PI_OVER_180);
-    float cosy = cos((model->rotation.y) * PI_OVER_180);
+    float siny = sin((model->rotation.y) * DEG2RAD);
+    float cosy = cos((model->rotation.y) * DEG2RAD);
     
-    float sinz = sin((model->rotation.z) * PI_OVER_180);
-    float cosz = cos((model->rotation.z) * PI_OVER_180);
+    float sinz = sin((model->rotation.z) * DEG2RAD);
+    float cosz = cos((model->rotation.z) * DEG2RAD);
 
     //Camera Rotation
-    float csinx = sin((cameraRotation.x)* PI_OVER_180);
-    float ccosx = cos((cameraRotation.x)* PI_OVER_180);
+    float csinx = sin((cameraRotation.x)* DEG2RAD);
+    float ccosx = cos((cameraRotation.x)* DEG2RAD);
 
-    float csiny = sin((cameraRotation.y) * PI_OVER_180);
-    float ccosy = cos((cameraRotation.y) * PI_OVER_180);
+    float csiny = sin((cameraRotation.y) * DEG2RAD);
+    float ccosy = cos((cameraRotation.y) * DEG2RAD);
     
-    float csinz = sin((cameraRotation.z) * PI_OVER_180);
-    float ccosz = cos((cameraRotation.z) * PI_OVER_180);
+    float csinz = sin((cameraRotation.z) * DEG2RAD);
+    float ccosz = cos((cameraRotation.z) * DEG2RAD);
 
     //Pre calculating terms (Obj rotation)
     float rxt1 = cosy*cosz, rxt2 = (cosz*sinx*siny - cosx*sinz), rxt3 = (cosx*cosz*siny + sinx*sinz);
@@ -331,14 +326,14 @@ void DrawLine(int x0, int y0, int x1, int y1,Pixel color) {
 Vector3 RotatePoint(Vector3 p, Vector3 r, Vector3 pivot){
         float rotx,roty,rotz,x,y,z;
     
-        float sinx = sin(r.x* PI_OVER_180);
-        float cosx = cos(r.x* PI_OVER_180);
+        float sinx = sin(r.x* DEG2RAD);
+        float cosx = cos(r.x* DEG2RAD);
     
-        float siny = sin(r.y * PI_OVER_180);
-        float cosy = cos(r.y * PI_OVER_180);
+        float siny = sin(r.y * DEG2RAD);
+        float cosy = cos(r.y * DEG2RAD);
             
-        float sinz = sin(r.z * PI_OVER_180);
-        float cosz = cos(r.z * PI_OVER_180);
+        float sinz = sin(r.z * DEG2RAD);
+        float cosz = cos(r.z * DEG2RAD);
     
         x = p.x - pivot.x;
         y = p.y - pivot.y;

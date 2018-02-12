@@ -6,7 +6,8 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 
-#define PI_OVER_180 0.01745329251
+#define DEG2RAD 0.01745329251
+#define RAD2DEG 57.2957795131
 #define ONE_OVER_256 0.00390625
 #define VECTOR3_ZERO (Vector3){0,0,0}
 #define max(a,b) \
@@ -48,4 +49,6 @@ Vector3 Reflection(Vector3 *v1,Vector3 *v2);
 int Step(float edge, float x );
 float Smoothstep(float edge0, float edge1, float x);
 float lerp(float v0, float v1, float t);
+int modulus(int a, int b);
+float fmodulus(float a, float b);
 #endif

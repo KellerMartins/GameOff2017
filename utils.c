@@ -97,3 +97,16 @@ float Smoothstep(float edge0, float edge1, float x)
 float lerp(float v0, float v1, float t) {
   return (1 - t) * v0 + t * v1;
 }
+
+//Modulus function, returning only positive values
+int modulus(int a, int b)
+{
+    int r = a % b;
+    return r < 0 ? r + b : r;
+}
+
+float fmodulus(float a, float b)
+{
+    float r = fmod(a,b);
+    return r < 0 ? r + b : r;
+}
