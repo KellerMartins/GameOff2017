@@ -68,7 +68,7 @@ void ClearScreen(){
     }
 }
 
-void RenderBloom(Pixel *bloomPix, unsigned downsample, float multiplier){
+void RenderDownscale(Pixel *bloomPix, unsigned downsample, float multiplier){
     unsigned width = GAME_SCREEN_WIDTH/downsample,height = GAME_SCREEN_HEIGHT/downsample;
     int i,j,k,l,cp = 0;
     //Iterates for each pixel in the bloom texture
@@ -90,7 +90,6 @@ void RenderBloom(Pixel *bloomPix, unsigned downsample, float multiplier){
                 bloomPix[cp] = (Pixel){0,0,0,0};
             }else{
                 avgBright =clamp(multiplier*avgBright/(downsample*downsample),0,255);
-                brightest.a = avgBright;
                 bloomPix[cp] = (Pixel){brightest.b,brightest.g,brightest.r,avgBright};
             }
             cp++;
@@ -114,19 +113,19 @@ void BlurBloom(Pixel *bloomPix, unsigned downsample,int blurAmount){
                     if((i*width + j)+ l + k*width > width*height) continue; 
 
                     Pixel current = bloomPix[(i + k)*width + j+l];
-                    int val = (k==0? 1 : abs(k)) * (l==0? 1 : abs(l));
-                    a += current.a/val;
-                    r += current.r/val;
-                    g += current.g/val;
-                    b += current.b/val;
+                    //int val = (k==0? 1 : abs(k)) * (l==0? 1 : abs(l));
+                    a += current.a;
+                    r += current.r;
+                    g += current.g;
+                    b += current.b;
                     
                 }
             }
 
-            a =clamp(a/(blurAmount*6),0,255);
-            r =clamp(r/(blurAmount*6),0,255);
-            g =clamp(g/(blurAmount*6),0,255);
-            b =clamp(b/(blurAmount*6),0,255);
+            a =clamp(a/(blurAmount*15),0,255);
+            r =clamp(r/(blurAmount*15),0,255);
+            g =clamp(g/(blurAmount*15),0,255);
+            b =clamp(b/(blurAmount*15),0,255);
             bloomPix[cp] = (Pixel){b,g,r,a};
 
             cp++;

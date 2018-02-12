@@ -1,8 +1,8 @@
 import bpy
 import math
 
-folderPath = "..\Tracks\\"
-fileName = "TestTrack"
+folderPath = "D:\Documents\Keller\Projetos\GameJams\GameOff2017\Tracks\\"
+fileName = "Track1"
 
 #Export model
 filePath = folderPath+fileName+"Model.txt"
@@ -56,16 +56,16 @@ filePath = folderPath+fileName+"Data.txt"
 f = open(filePath, 'w')
 
 #Track width
-f.write('10.117 ')
+f.write('11.0 ')
 
 #End line
 ob = bpy.data.objects['End']
 f.write('{} {} {} '.format(ob.location.x, ob.location.y, ob.location.z))
 
 #Car Spawns
-for n in range(0,6):
+for n in range(0,9):
     ob = bpy.data.objects['Spawn_{}'.format(n)]
-    f.write('{} {} {} '.format(ob.location.x, ob.location.z, ob.location.y))
+    f.write('{} {} {} '.format(ob.location.x, ob.location.y, ob.location.z))
     f.write('{} {} {} '.format(math.degrees(ob.rotation_euler.x), math.degrees(ob.rotation_euler.z), math.degrees(ob.rotation_euler.y)))
 
 f.close()

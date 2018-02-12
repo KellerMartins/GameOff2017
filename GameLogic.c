@@ -1,7 +1,7 @@
 #include "GameLogic.h"
 #define MAX_SPEED 50
 #define MAX_TURNSPEED 5
-#define MAX_CARS 6
+#define MAX_CARS 10
 extern double deltaTime;
 Car players[MAX_CARS];
 
@@ -12,6 +12,8 @@ float TrackWidth;
 Vector3 EndLine;
 Vector3 SpawnPos[MAX_CARS];
 Vector3 SpawnRot[MAX_CARS];
+Pixel CarColors[] = {{100,255,30,255},{0,50,255,255},{96,255,42,255},{0,255,100,255},{255,0,169,255},{0,55,255,255},
+                     {0,0,255,255},{255,0,0,255},{0,255,0,255},{0,0,0,255}};
 
 extern Vector3 cameraRotation;
 //Debug points :P
@@ -30,15 +32,8 @@ void InitCars ()
         players[i].position = SpawnPos[i];
         players[i].rotation = SpawnRot[i];
 
-        if(i == 0)
-        {
-            //O modelo do player sera iniciado separadamente
-           players[i].object = LoadModel("Models/Car1.txt");
-
-        } else{
-            //Modelo generico para todos os outros carros
-           players[i].object = LoadModel("Models/Car1.txt");
-        }
+        players[i].object = LoadModel("Models/Car1.txt");
+        players[i].object.color = CarColors[i%(sizeof(CarColors)/sizeof(Pixel))];
     }
 }
 
@@ -74,6 +69,12 @@ void FreeCars ()
 void AIMovement(){
     int i;
     for(i=1;i<MAX_CARS;i++){
+
+        Vector3 ppz = {0,0,players[i].position.z};
+        Vector3 endz = {0,0,EndLine.z};
+        float dist2finishPlayer = dist(ppz,endz);
+        if(dist2finishPlayer<1) continue;
+
         Vector3 forward = RotatePoint((Vector3){0,0,-1},players[i].rotation,VECTOR3_ZERO);
         forward.y = 0;
         NormalizeVector(&forward);
@@ -83,23 +84,21 @@ void AIMovement(){
         NormalizeVector(&right);
 
         Vector3 cnVec = subtract(players[i].next,players[i].closest); //Vector from closest to next position in path
-        cnVec.y = 0;
-        NormalizeVector(&cnVec);
+        if(cnVec.x != 0 && cnVec.z != 0){
+            cnVec.y = 0;
+            NormalizeVector(&cnVec);
 
-        float turnAngle = acos(dot(forward,cnVec))*RAD2DEG;
-        if(i == 1){
-            printf("%4.6f\n",turnAngle);
-        }
-        if(abs(turnAngle) > 0){
-            float turnDir = dot(right,cnVec);
+            float turnAngle = acos(dot(forward,cnVec))*RAD2DEG;
+            if(abs(turnAngle) > 0){
+                float turnDir = dot(right,cnVec);
 
-            if(turnDir < 0){
-                CarHandling(i,CAR_RIGHT);
-            }else{
-                CarHandling(i,CAR_LEFT);
+                if(turnDir < 0){
+                    CarHandling(i,CAR_RIGHT);
+                }else{
+                    CarHandling(i,CAR_LEFT);
+                }
             }
         }
-
         CarHandling(i,CAR_FRONT);
         CarMovement(i);
     }
@@ -110,9 +109,9 @@ void CarHandling(int player, int dir){
     if(dir == CAR_FRONT)
     {
         if(player == 0){
-            players[player].speed += players[player].speed < MAX_SPEED*1.1f ? 10*deltaTime : 0;
+            players[player].speed += players[player].speed < MAX_SPEED*1.025f ? 10*deltaTime : 0;
         }else{
-            players[player].speed += players[player].speed < MAX_SPEED ? 11*deltaTime : 0; 
+            players[player].speed += players[player].speed < MAX_SPEED ? 12.2*deltaTime : 0; 
         }
     }else if(dir == CAR_STOP)
     {
@@ -126,7 +125,7 @@ void CarHandling(int player, int dir){
     if(player == 0){
         TurnSpeed = 0.25 + (players[player].speed/40 <MAX_TURNSPEED ? players[player].speed/40 : MAX_TURNSPEED);
     }else{
-        TurnSpeed = 1.25 + (players[player].speed/20 <MAX_TURNSPEED ? players[player].speed/20 : MAX_TURNSPEED);
+        TurnSpeed = MAX_TURNSPEED;
     }
 
     //Resets rotation (Last direction rotation counts)
@@ -260,15 +259,26 @@ void CarMovement (int player)
 
 int GetPlayerRank(int player){
     int i,pos = 1;
-    float dist2finishPlayer = dist(players[player].position,EndLine);
+    Vector3 ppz = {0,0,players[player].position.z};
+    Vector3 endz = {0,0,EndLine.z};
+    float dist2finishPlayer = dist(ppz,endz);
 
     for(i = 0;i<MAX_CARS;i++){
-        float dist2finish = dist(players[i].position,EndLine);
+        Vector3 pz = {0,0,players[i].position.z};
+        float dist2finish = dist(pz,endz);
         if(dist2finish < dist2finishPlayer){
             pos++;
         }
     }
     return pos;
+}
+
+int RaceEnded(){
+    Vector3 ppz = {0,0,players[0].position.z};
+    Vector3 endz = {0,0,EndLine.z};
+    float dist2finishPlayer = dist(ppz,endz);
+
+    return dist2finishPlayer<1.5;
 }
 
 void PointInPath(Vector3 point, Vector3 direction, Vector3 *closest, Vector3 *next)
@@ -282,9 +292,9 @@ void PointInPath(Vector3 point, Vector3 direction, Vector3 *closest, Vector3 *ne
 
     int i;
     *closest = TrackPath.vertices[0];
-    *next = *closest;
-    float distance = dist(*closest, point);
-    for(i=1; i<TrackPath.vCount; i++)
+    *next = TrackPath.vertices[1];
+    float distance = INFINITY;
+    for(i=0; i<TrackPath.vCount; i++)
     {
         if(distance > dist(TrackPath.vertices[i], point))
         {
@@ -293,9 +303,9 @@ void PointInPath(Vector3 point, Vector3 direction, Vector3 *closest, Vector3 *ne
         }
     }
 
-    distance = dist(*next, *closest);
+    distance = INFINITY;
     Vector3 v2c; //vertice to closest
-    for(i=1; i< TrackPath.vCount; i++)
+    for(i=0; i< TrackPath.vCount; i++)
     {
         v2c = subtract(TrackPath.vertices[i],*closest);
         if(dot(v2c,direction)>0)
@@ -356,11 +366,11 @@ void LoadTrack(char trackPath[]){
     }
 
     fscanf(file,"%f",&TrackWidth);
-    fscanf(file,"%f%f%f",&EndLine.x,&EndLine.y,&EndLine.z);
+    fscanf(file,"%f%f%f",&EndLine.x,&EndLine.z,&EndLine.y);
     int i;
-    for(i=0;i<6;i++){
-        fscanf(file,"%f%f%f",&SpawnPos[i].x,&SpawnPos[i].y,&SpawnPos[i].z);
-        fscanf(file,"%f%f%f",&SpawnRot[i].x,&SpawnRot[i].y,&SpawnRot[i].z);
+    for(i=0;i<MAX_CARS;i++){
+        fscanf(file,"%f%f%f",&SpawnPos[i].x,&SpawnPos[i].z,&SpawnPos[i].y);
+        fscanf(file,"%f%f%f",&SpawnRot[i].x,&SpawnRot[i].z,&SpawnRot[i].y);
     }
 
     fclose(file);

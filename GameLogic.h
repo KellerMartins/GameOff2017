@@ -28,6 +28,7 @@ void AIMovement();
 
 void PointInPath(Vector3 point, Vector3 direction, Vector3 *closest, Vector3 *next);
 int GetPlayerRank(int player);
+int RaceEnded();
 
 void LoadTrack(char trackPath[]);
 void FreeTrack();

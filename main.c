@@ -180,7 +180,7 @@ void InitProgram(){
 	if(SCREEN_WIDTH == 1280) FOV = 80;
 
 	//Creating window
-	window = SDL_CreateWindow( "Retro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+	window = SDL_CreateWindow( "Retro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN|SDL_WINDOW_FULLSCREEN);
 	if(window == NULL){
 		printf("Window could not be created! SDL_Error %s\n", SDL_GetError() );
 		ErrorOcurred = 1;
@@ -820,12 +820,12 @@ void MenuState(){
 			if(BLOOM_ENABLED){
 				//Process first bloom pass
 				SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
-					RenderBloom(bloomS1Pix,BLOOMS1_DOWNSCALE,0.7);
+					RenderDownscale(bloomS1Pix,BLOOMS1_DOWNSCALE,0.7);
 				SDL_UnlockTexture(bloomStep1);
 
 				//Process second bloom pass
 				SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
-					RenderBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,1);
+					RenderDownscale(bloomS2Pix,BLOOMS2_DOWNSCALE,1);
 					BlurBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,4);
 				SDL_UnlockTexture(bloomStep2);
 			}
@@ -895,16 +895,18 @@ void MenuState(){
 extern Model TrackPath;
 extern Model TrackModel;
 void GameState(){
-	LoadTrack("Tracks/TestTrack");
+	LoadTrack("Tracks/Track1");
 
-	Fred1 = LoadModel("Models/Fred.txt");
-	Fred1.color = (Pixel){0,0,255,255};
-	Fred2 = LoadModel("Models/Fred.txt");
-	Fred2.color = (Pixel){0,255,0,255};
-	Fred3 = LoadModel("Models/Fred.txt");
-	Fred3.color = (Pixel){255,0,0,255};
+	//Fred1 = LoadModel("Models/Fred.txt");
+	//Fred1.color = (Pixel){0,0,255,255};
+	//Fred2 = LoadModel("Models/Fred.txt");
+	//Fred2.color = (Pixel){0,255,0,255};
+	//Fred3 = LoadModel("Models/Fred.txt");
+	//Fred3.color = (Pixel){255,0,0,255};
 
 	InitCars();
+	double time = -3;
+	GameUpdate();
 	//Game loop
 	while (!Exit)
 	{
@@ -913,11 +915,13 @@ void GameState(){
 		LAST = NOW;
 		NOW = SDL_GetPerformanceCounter();
 		deltaTime = (double)((NOW - LAST)*1000 / SDL_GetPerformanceFrequency() )*0.001;
+		time+=deltaTime;
 
 		InputUpdate();
-		GameUpdate();
-		if (GetKeyDown(SDL_SCANCODE_RETURN))
-		{
+		if(time>=0){
+			GameUpdate();
+		}
+		if (GetKeyDown(SDL_SCANCODE_RETURN) && RaceEnded()){
 			programState = STATE_MENU;
 			Exit = 1;
 		}
@@ -928,23 +932,23 @@ void GameState(){
 			ClearScreen();
 			
 			RenderModel(&TrackModel);
-			RenderModel(&TrackPath);
+			//RenderModel(&TrackPath);
 
-			RenderModel(&Fred1);
-			RenderModel(&Fred2);
-			RenderModel(&Fred3);
+			//RenderModel(&Fred1);
+			//RenderModel(&Fred2);
+			//RenderModel(&Fred3);
 
 			RenderCars();
 
 			if(BLOOM_ENABLED){
 				//Process first bloom pass
 				SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
-					RenderBloom(bloomS1Pix,BLOOMS1_DOWNSCALE,0.7);
+					RenderDownscale(bloomS1Pix,BLOOMS1_DOWNSCALE,0.7);
 				SDL_UnlockTexture(bloomStep1);
 
 				//Process second bloom pass
 				SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
-					RenderBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,1);
+					RenderDownscale(bloomS2Pix,BLOOMS2_DOWNSCALE,1);
 					BlurBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,4);
 				SDL_UnlockTexture(bloomStep2);
 			}
@@ -972,14 +976,26 @@ void GameState(){
 			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
 			SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
 		}
-		int playerPos = GetPlayerRank(0);
-		FC_Draw(fontMedium, renderer,10,0, "Time: %3.2f",550.0f);
-		FC_Draw(fontBig, renderer,50,FC_GetLineHeight(fontMedium)/2, "%d", playerPos);
-		FC_Draw(fontSmall, renderer,
-				50 + FC_GetWidth(fontBig, "%d", playerPos)+FC_GetWidth(fontSmall, "st"),
-				FC_GetLineHeight(fontBig) - FC_GetLineHeight(fontMedium)/2,
-				"%s", playerPos==1? "st": (playerPos==2? "nd": (playerPos==3? "rd":"th"))
-				);
+
+		if(time>=0){
+			int playerPos = GetPlayerRank(0);
+			if(!RaceEnded()){
+				FC_Draw(fontMedium, renderer,10,0, "Time: %3.2f",time);
+				FC_Draw(fontBig, renderer,50,FC_GetLineHeight(fontMedium)/2, "%d", playerPos);
+				FC_Draw(fontSmall, renderer,
+						50 + FC_GetWidth(fontBig, "%d", playerPos)+FC_GetWidth(fontSmall, "st"),
+						FC_GetLineHeight(fontBig) - FC_GetLineHeight(fontMedium)/2,
+						"%s", playerPos==1? "st": (playerPos==2? "nd": (playerPos==3? "rd":"th"))
+						);
+			}else{
+				if(playerPos!=1)
+				FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "%d%s Place!", playerPos, playerPos==1? "st": (playerPos==2? "nd": (playerPos==3? "rd":"th")));
+				else
+				FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "YOU WON!");
+			}
+		}else{
+			FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "%d",(int)ceilf(-time));
+		}
 		
 		//Draw stats text
         FC_DrawAlign(fontSmall, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
@@ -1204,10 +1220,12 @@ void GameUpdate(){
 	{
 		CarHandling(0, CAR_STOP);
 	}
-	CarMovement(0);
-	CarCamera(0);
+	if(!RaceEnded()){
+		CarMovement(0);
+		CarCamera(0);	
 
-	AIMovement();
+		AIMovement();
+	}
 }
 
 void FreeAllocations(){
