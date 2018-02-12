@@ -7,10 +7,6 @@
 #include <SDL2/SDL_image.h>
 #include "SDL_FontCache.h"
 
-#ifndef __unix__
-#include "soloud_c.h"
-#endif
-
 #include "renderer.h"
 #include "utils.h"
 #include "GameLogic.h"
@@ -43,10 +39,6 @@ char *fpscounter;
 FC_Font* fontSmall = NULL;
 FC_Font* fontMedium = NULL;
 FC_Font* fontBig = NULL;
-
-#ifndef __unix__
-Soloud *soloud = NULL;
-#endif
 
 //Time between frames
 double deltaTime = 0;
@@ -139,18 +131,7 @@ void InitProgram(){
 
 	//Random from start time
 	srand( (unsigned)time(NULL) );
-	
-	//Initializing SoLoud sound engine (Windows Only)
-	#ifndef __unix__
-	soloud = Soloud_create();
-	if(Soloud_initEx(soloud,SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO)<0){
-		printf("SoLoud could not initialize! \n");
-		ErrorOcurred = 1;
-		programState = STATE_EXIT;
-		Exit = 1;
-		FreeAllocations();
-	}
-	#endif
+
 	//Initializing SDL
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
 	{
@@ -1252,14 +1233,7 @@ void FreeAllocations(){
 
 	if(fontBig!=NULL)
 	FC_FreeFont(fontBig);
-	//Systems dealocation
-
-	#ifndef __unix__
-	if(soloud!=NULL){
-		Soloud_deinit(soloud);
-		Soloud_destroy(soloud);
-	}
-	#endif		
+	//Systems dealocation	
 
 	if(render!=NULL)
 		SDL_DestroyTexture(render);
