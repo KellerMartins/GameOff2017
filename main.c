@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include "SDL_FontCache.h"
+#include <emscripten.h>
 
 #include "renderer.h"
 #include "utils.h"
@@ -48,7 +49,7 @@ Uint64 NOW;
 Uint64 LAST;
 
 //Array with the keyboard state
-const Uint8 *keyboard_current = NULL;
+Uint8 *keyboard_current;
 Uint8 *keyboard_last;
 SDL_Event event;
 
@@ -113,17 +114,17 @@ SDL_Rect rectSun;
 float sunRatio;
 
 int main(int argc, char *argv[]){
-
 	//Initializes SDL, SDL_IMAGE, SoLoud, basic textures and general stuff
 	InitProgram();
 	
 	//MenuState call, runs to other states until the we close the game
 	if (programState != STATE_EXIT) //If initialization failed, go to free
 		MenuState();
-
-	//Deallocate objects and systems
-	FreeAllocations();
-	return 0;
+	else{
+		//Deallocate objects and systems
+		FreeAllocations();
+		return 0;
+	}
 }
 
 void InitProgram(){
@@ -133,7 +134,7 @@ void InitProgram(){
 	srand( (unsigned)time(NULL) );
 
 	//Initializing SDL
-    if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
+    if(SDL_Init(SDL_INIT_EVERYTHING & ~(SDL_INIT_TIMER | SDL_INIT_HAPTIC)) < 0)
 	{
         printf("SDL could not initialize! SLD_Error: %s\n", SDL_GetError());
 		ErrorOcurred = 1;
@@ -161,7 +162,7 @@ void InitProgram(){
 	if(SCREEN_WIDTH == 1280) FOV = 80;
 
 	//Creating window
-	window = SDL_CreateWindow( "Retro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN|SDL_WINDOW_FULLSCREEN);
+	window = SDL_CreateWindow( "Retro", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	if(window == NULL){
 		printf("Window could not be created! SDL_Error %s\n", SDL_GetError() );
 		ErrorOcurred = 1;
@@ -202,21 +203,21 @@ void InitProgram(){
     
     //Initialize keyboard array
 	keyboard_last = (Uint8 *)calloc(284,sizeof(Uint8));
-	keyboard_current = SDL_GetKeyboardState(NULL);
+	keyboard_current = (Uint8 *)calloc(284,sizeof(Uint8));
 
 	//Initialize fonts
 	fontSmall = FC_CreateFont();  
-	if(!FC_LoadFont(fontSmall, renderer, "Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+	if(!FC_LoadFont(fontSmall, renderer, "Assets/Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
         printf("Font: Error loading font!\n");
 	}
 
 	fontMedium = FC_CreateFont();  
-	if(!FC_LoadFont(fontMedium, renderer, "Visitor.ttf",72, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+	if(!FC_LoadFont(fontMedium, renderer, "Assets/Visitor.ttf",72, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
         printf("Font: Error loading font!\n");
 	}
 
 	fontBig = FC_CreateFont();  
-	if(!FC_LoadFont(fontBig, renderer, "Visitor.ttf",260, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+	if(!FC_LoadFont(fontBig, renderer, "Assets/Visitor.ttf",260, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
         printf("Font: Error loading font!\n");
 	}
 
@@ -229,7 +230,7 @@ void InitProgram(){
 	}
 
 	//Sun Texture
-	SDL_Surface * sunSurf = IMG_Load("Textures/Sun.png");
+	SDL_Surface * sunSurf = IMG_Load("Assets/Textures/Sun.png");
 	if(sunSurf == NULL){
 		printf("Error opening image!\n");
 	}
@@ -242,7 +243,7 @@ void InitProgram(){
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 
 	//Sky texture
-	SDL_Surface * skySurf = IMG_Load("Textures/Sky.png");
+	SDL_Surface * skySurf = IMG_Load("Assets/Textures/Sky.png");
 	if(skySurf == NULL){
 		printf("Error opening image!\n");
 	}
@@ -254,7 +255,7 @@ void InitProgram(){
 	rectSky.x = 0; rectSky.y = 0; rectSky.w = GAME_SCREEN_WIDTH; rectSky.h = GAME_SCREEN_WIDTH*skyRatio; 
 
 	//Vignette Texture
-	SDL_Surface * vigSurf = IMG_Load("Textures/Vignette.png");
+	SDL_Surface * vigSurf = IMG_Load("Assets/Textures/Vignette.png");
 	if(vigSurf == NULL){
 		printf("Error opening image!\n");
 	}
@@ -267,70 +268,589 @@ void InitProgram(){
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 }
 
+SDL_Surface * titleSurf;
+SDL_Texture * titleTex;
+int titleW, titleH;
+float titleRatio;
+SDL_Rect rectTitle;
+
+Model Play;
+Model Options;
+Model ExitModel;
+Model Arrow;
+Model Resolution;
+Model R1920;
+Model R1366;
+Model R1280;
+Model Bloom;
+Model ToggleOff;
+Model ToggleOn;
+Model BackOp;
+Model StartRace;
+Model BackPlay;
+Model CarModel;
+Model Plane;
+
+int MenuScreen;
+float cameraMovementTime;
+int currentOption, numOptions, OptResolution;
+void MenuStateFinish();
+void MenuStateLoop(void *arg){
+	//Ms tick time
+	frameTicks = SDL_GetTicks();
+	LAST = NOW;
+	NOW = SDL_GetPerformanceCounter();
+	deltaTime = (double)((NOW - LAST)*1000 / SDL_GetPerformanceFrequency() )*0.001;
+
+	InputUpdate();
+	
+	//Input handling and option selection
+	if (GetKeyDown(SDL_SCANCODE_RETURN))
+	{
+		//Pressed enter in game screen
+		//Transition from game to title screen
+		if(MenuScreen == 1 ){
+			switch(currentOption){
+				//Go to Game Race
+				case 1:
+					programState = STATE_GAME;
+					Exit = 1;
+				break;
+				//Game to title
+				case 0:
+					cameraMovementTime = 0;
+					MenuScreen = 0;
+					numOptions = 3;
+					currentOption = 2;
+
+					Play.enabled = 1;
+					Options.enabled = 1;
+					ExitModel.enabled = 1;
+					Arrow.enabled = 1;
+
+					Play.position = (Vector3){-20,0,0};
+					Options.position = (Vector3){-20,0,0};
+					ExitModel.position = (Vector3){-20,0,0};
+					Arrow.position = (Vector3){20,0,0};
+				break;
+			}
+
+		}
+		//Pressed enter in the Title screen
+		else if(MenuScreen == 0){
+			switch(currentOption){
+				//Title to game (Option 2)
+				case 2:
+					cameraMovementTime = 0;
+					MenuScreen = 1;
+					numOptions = 2;
+					currentOption = 1;
+
+					StartRace.enabled = 1;
+					BackPlay.enabled = 1;
+					
+					StartRace.position.x = 30;
+					BackPlay.position.x = 30;
+				break;
+				//Title to options (Option 1)
+				case 1:
+					MenuScreen = 2;
+					numOptions = 3;
+					currentOption = 2;
+
+					Resolution.enabled = 1;
+					Bloom.enabled = 1;
+					BackOp.enabled = 1;
+
+					Resolution.position.x = 20;
+					Bloom.position.x = 20;
+					BackOp.position.x = 20;
+				break;
+				//Title to exit (Option 0)
+				case 0:
+					programState = STATE_EXIT;
+					Exit = 1;
+				break;
+			}
+		}
+		//Pressed enter in options screen
+		else if(MenuScreen == 2){
+			switch(currentOption){
+				//Pressed on resolution, set window resolution, recalculate values and recreate textures
+				case 2:
+					ChangeResolution(OptResolution);
+					rectTitle.x = GAME_SCREEN_WIDTH/12;
+					rectTitle.w = GAME_SCREEN_WIDTH/1.2; 
+					rectTitle.h = GAME_SCREEN_WIDTH/1.2 * titleRatio;
+				break;
+				//Pressed on Bloom, toggle bloom
+				case 1:
+					BLOOM_ENABLED = !BLOOM_ENABLED;
+				break;
+				//Pressed on back, return to title screen
+				case 0:
+					MenuScreen = 0;
+					numOptions = 3;
+					currentOption = 2;
+
+					Play.enabled = 1;
+					Options.enabled = 1;
+					ExitModel.enabled = 1;
+
+					Arrow.position = (Vector3){20,0,0};
+				break;
+			}
+		}
+	}
+	//Select up option
+	if (GetKeyDown(SDL_SCANCODE_UP)|GetKeyDown(SDL_SCANCODE_W)){
+		currentOption = (currentOption+1)%numOptions;
+	}
+	//Select down option
+	if (GetKeyDown(SDL_SCANCODE_DOWN)|GetKeyDown(SDL_SCANCODE_S)){
+		currentOption = (currentOption-1)%numOptions;
+		currentOption = currentOption<0? numOptions + currentOption : currentOption;
+	}
+	//Select left option
+	if (GetKeyDown(SDL_SCANCODE_LEFT)|GetKeyDown(SDL_SCANCODE_A)){
+		if(MenuScreen == 2 && currentOption == 2){
+			OptResolution = (OptResolution-1)%3;
+			OptResolution = OptResolution<0? 3 + OptResolution : OptResolution;
+		}
+	}
+	//Select right option
+	if (GetKeyDown(SDL_SCANCODE_RIGHT)|GetKeyDown(SDL_SCANCODE_D)){
+		if(MenuScreen == 2 && currentOption == 2){
+			OptResolution = (OptResolution+1)%3;
+		}
+	}
+	if (GetKey(SDL_SCANCODE_ESCAPE))
+	{
+		programState = STATE_EXIT;
+		Exit = 1;
+	}
+
+	//Moves plane in the background
+	Plane.position.z = fmod(Plane.position.z+50*deltaTime,10.0);
+
+	//Position texts based on the current screen of the menu
+	switch(MenuScreen){
+		//-------------------------------------- Title Screen ---------------------------------------
+		case 0:
+			
+			//Title go down
+			if(rectTitle.y < 0){
+				rectTitle.y += 1000*deltaTime;
+			}else{
+				rectTitle.y = 0;
+			}
+
+			//Options come from right side of the screen
+			if(Play.position.x < 0){
+				Play.position.x += 50*deltaTime;
+			}else{
+				Play.position.x = 0;
+			}
+			if(Options.position.x < 0){
+				Options.position.x += 40*deltaTime;
+			}else{
+				Options.position.x = 0;
+			}
+			if(ExitModel.position.x < 0){
+				ExitModel.position.x += 30*deltaTime;
+			}else{
+				ExitModel.position.x = 0;
+			}
+			if(Arrow.position.x > 2){
+				Arrow.position.x -= 30*deltaTime;
+			}else{
+				Arrow.position.x = 2;
+			}
+
+			//If Options screen options are active, put them at left and disable
+			if(BackOp.enabled){
+				if(Resolution.position.x < 20){
+					Resolution.position.x += 50*deltaTime;
+				}else{
+					Resolution.enabled = 0;
+				}
+				if(Bloom.position.x < 20){
+					Bloom.position.x += 40*deltaTime;
+				}else{
+					Bloom.enabled = 0;
+				}
+				if(BackOp.position.x < 20){
+					BackOp.position.x += 40*deltaTime;
+				}else{
+					BackOp.enabled = 0;
+				}
+			}
+			//If Play game screen options are active, put them at left and disable
+			if(StartRace.enabled){
+				if(StartRace.position.x <30){
+					StartRace.position.x += 60*deltaTime;
+				}else{
+					StartRace.enabled = 0;
+				}
+				if(BackPlay.position.x < 30){
+					BackPlay.position.x += 50*deltaTime;
+				}else{
+					BackPlay.enabled = 0;
+				}
+			}
+
+			switch (currentOption){
+				case 0:
+					Arrow.position.y = 0.35;
+				break;
+				case 1:
+					Arrow.position.y = 1.35;
+				break;
+				case 2:
+					Arrow.position.y = 2.35;
+				break;
+			}
+
+			//Car brakes
+			if(CarModel.position.z < 20){
+				CarModel.position.z += 40*deltaTime;
+				//Return camera to original position while the car brakes
+				cameraMovementTime += deltaTime/2;
+
+				cameraPosition.x = lerp(cameraPosition.x,0,cameraMovementTime);
+				cameraPosition.y = lerp(cameraPosition.y,4.02,cameraMovementTime);
+				cameraPosition.z = lerp(cameraPosition.z,22.5,cameraMovementTime);
+
+				cameraRotation.x = lerp(cameraRotation.x,-2.16,cameraMovementTime);
+				cameraRotation.y = lerp(cameraRotation.y,0,cameraMovementTime);
+				cameraRotation.z = lerp(cameraRotation.z,0,cameraMovementTime);
+			}else{
+				CarModel.position.z = 20;
+			}
+
+		break;
+		//-------------------------------------- Play Game ---------------------------------------
+		case 1:
+
+			//Title go up
+			if(rectTitle.y > -rectTitle.h){
+				rectTitle.y -= 1000*deltaTime;
+			}else{
+				rectTitle.y = -rectTitle.h;
+			}
+
+			//Options go towards camera
+			if(Play.position.z < 20){
+				Play.position.z += 50*deltaTime;
+			}else{
+				Play.enabled = 0;
+			}
+			if(Options.position.z < 20){
+				Options.position.z += 50*deltaTime;
+			}else{
+				Options.enabled = 0;
+			}
+			if(ExitModel.position.z < 20){
+				ExitModel.position.z += 50*deltaTime;
+			}else{
+				ExitModel.enabled = 0;
+			}
+
+			//Car accelerate
+			if(CarModel.position.z > 0){
+				CarModel.position.z -= 30*deltaTime;
+
+				//While car hasn't stopped, move arrow out of the screen
+				if(Arrow.position.z < 20){
+					Arrow.position.z += 50*deltaTime;
+				}
+			}else{
+				CarModel.position.z = 0;
+
+				//Move camera closer to car after he enters the screen
+				cameraMovementTime += deltaTime/2;
+				cameraPosition.x = lerp(cameraPosition.x,2.961973,cameraMovementTime);
+				cameraPosition.y = lerp(cameraPosition.y,1.135397,cameraMovementTime);
+				cameraPosition.z = lerp(cameraPosition.z,5.717530,cameraMovementTime);
+
+				cameraRotation.x = lerp(cameraRotation.x,-2.160000,cameraMovementTime);
+				cameraRotation.y = lerp(cameraRotation.y,-15.240041,cameraMovementTime);
+				cameraRotation.z = lerp(cameraRotation.z,0,cameraMovementTime);
+
+				//Make arrow reappear and move StartRace and BackPlay to position
+				Arrow.rotation = StartRace.rotation;
+				if(StartRace.position.x > 2){
+					StartRace.position.x -= 58*deltaTime;
+				}else{
+					StartRace.position.x = 2;
+				}
+
+				if(BackPlay.position.x > 2){
+					BackPlay.position.x -= 58*deltaTime;
+				}else{
+					BackPlay.position.x = 2;
+				}
+			}
+
+			switch (currentOption){
+				case 1:
+					Arrow.position = StartRace.position;
+					Arrow.position.x += 2.1;
+					Arrow.position.y +=0.35;
+				break;
+				case 0:
+					Arrow.position = StartRace.position;
+					Arrow.position.x += 2.1;
+					Arrow.position.y -=0.65;
+				break;
+			}
+
+		break;
+		//-------------------------------------- Options ---------------------------------------
+		case 2:
+			
+			//Title screen options goes to right
+			if(Play.position.x > -20){
+				Play.position.x -= 50*deltaTime;
+				
+				//Put arrow away, to return it later
+				if(Arrow.position.x < 20){
+					Arrow.position.x += 50*deltaTime;
+				}else{
+					Arrow.position.x = 20;
+				}
+
+			}else{
+				Play.position.x = -20;
+
+				//After this element is off screen, return the arrow to screen
+				if(Arrow.position.x > 4){
+					Arrow.position.x -= 50*deltaTime;
+				}else{
+					Arrow.position.x = 3.9;
+				}
+			}
+			if(Options.position.x > -20){
+				Options.position.x -= 40*deltaTime;
+			}else{
+				Options.position.x = -20;
+			}
+			if(ExitModel.position.x > -20){
+				ExitModel.position.x -= 30*deltaTime;
+			}else{
+				ExitModel.position.x = -20;
+			}
+
+			//Options screen options come from the left
+			if(Resolution.position.x > 0){
+				Resolution.position.x -= 50*deltaTime;
+			}else{
+				Resolution.position.x = 0;
+			}
+			if(Bloom.position.x > 0){
+				Bloom.position.x -= 40*deltaTime;
+			}else{
+				Bloom.position.x = 0;
+			}
+			if(BackOp.position.x > 0){
+				BackOp.position.x -= 40*deltaTime;
+			}else{
+				BackOp.position.x = 0;
+			}
+
+			switch (currentOption){
+				case 0:
+					Arrow.position.y = 0.35;
+				break;
+				case 1:
+					Arrow.position.y = 1.35;
+				break;
+				case 2:
+					Arrow.position.y = 2.35;
+				break;
+			}
+
+			//Car brakes
+			if(CarModel.position.z < 20){
+				CarModel.position.z += 40*deltaTime;
+				//Return camera to original position while the car brakes
+				cameraMovementTime += deltaTime/2;
+
+				cameraPosition.x = lerp(cameraPosition.x,0,cameraMovementTime);
+				cameraPosition.y = lerp(cameraPosition.y,4.02,cameraMovementTime);
+				cameraPosition.z = lerp(cameraPosition.z,22.5,cameraMovementTime);
+
+				cameraRotation.x = lerp(cameraRotation.x,-2.16,cameraMovementTime);
+				cameraRotation.y = lerp(cameraRotation.y,0,cameraMovementTime);
+				cameraRotation.z = lerp(cameraRotation.z,0,cameraMovementTime);
+			}else{
+				CarModel.position.z = 20;
+			}
+
+		break;
+	}
+
+	
+	//Rendering
+	//Locks texture to manual modification
+	SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
+		UpdateScreenPointer(renderPix);
+		ClearScreen();
+
+		RenderModel(&Play);
+		RenderModel(&Options);
+		RenderModel(&ExitModel);
+		RenderModel(&Arrow);
+
+		RenderModel(&Resolution);
+		RenderModel(&Bloom);
+		RenderModel(&BackOp);
+
+		RenderModel(&BackPlay);
+		RenderModel(&StartRace);
+
+		RenderModel(&CarModel);
+		RenderModel(&Plane);
+
+		//Render the options
+		if(MenuScreen == 2){
+			if(BLOOM_ENABLED){
+				ToggleOn.position = (Vector3){Bloom.position.x-0.6,1.3,0};
+				RenderModel(&ToggleOn);
+			}else{
+				ToggleOff.position = (Vector3){Bloom.position.x-0.6,1.3,0};
+				RenderModel(&ToggleOff);
+			}
+
+			if(OptResolution == 0){
+				R1920.position = (Vector3){Resolution.position.x,2,0};
+				RenderModel(&R1920);
+			}else if(OptResolution == 1){
+				R1366.position = (Vector3){Resolution.position.x,2,0};
+				RenderModel(&R1366);
+			}else{
+				R1280.position = (Vector3){Resolution.position.x,2,0};
+				RenderModel(&R1280);
+			}
+		}
+
+		if(BLOOM_ENABLED){
+			//Process first bloom pass
+			SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
+				RenderDownscale(bloomS1Pix,BLOOMS1_DOWNSCALE,0.7);
+			SDL_UnlockTexture(bloomStep1);
+
+			//Process second bloom pass
+			SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
+				RenderDownscale(bloomS2Pix,BLOOMS2_DOWNSCALE,1);
+				BlurBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,4);
+			SDL_UnlockTexture(bloomStep2);
+		}
+	SDL_UnlockTexture(render);
+
+	//Clears screen and blit the render texture into the screen
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, skyTex, NULL, &rectSky);
+	SDL_RenderCopy(renderer, render, NULL, NULL);
+	SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
+
+	//Constant of how much the sun must move based in the FOV
+	Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
+	float sunAngle = fmodulus(cameraRotation.y,360.0);
+
+	//Derivative of |sin(x/2)|, used to position sun based on camera angle
+	float mult = sin(DEG2RAD*sunAngle)/(4*fabs(cos(DEG2RAD*sunAngle/2.0)));
+
+	rectSun.x = mult*180* sunRot.x + GAME_SCREEN_WIDTH/2.67;
+	rectSun.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
+	SDL_RenderCopy(renderer, sunTex, NULL, &rectSun);
+
+	if(BLOOM_ENABLED){
+		SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
+		SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
+	}
+	//Render menu screen
+	SDL_RenderCopy(renderer, titleTex, NULL, &rectTitle);
+
+	//Draw stats text
+	FC_DrawAlign(fontSmall, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
+
+	//Passes rendered image to screen
+	SDL_RenderPresent(renderer);
+
+	//Calculates the time it took to process this iteration
+	mstime = SDL_GetTicks()-frameTicks;
+	ProcessFPS();
+
+	if(Exit == 1){
+		emscripten_cancel_main_loop();
+		MenuStateFinish();
+	}
+}
+
 void MenuState(){
 	//Game title Texture
-	SDL_Surface * titleSurf = IMG_Load("Textures/Title.png");
+	titleSurf = IMG_Load("Assets/Textures/Title.png");
 	if(titleSurf == NULL){
 		printf("Error opening image!\n");
 	}
-	SDL_Texture * titleTex = SDL_CreateTextureFromSurface(renderer, titleSurf);
+	titleTex = SDL_CreateTextureFromSurface(renderer, titleSurf);
 	SDL_FreeSurface(titleSurf);
-	int titleW, titleH;
 	SDL_QueryTexture(titleTex, NULL, NULL, &titleW, &titleH);
-	float titleRatio = titleH/(float)titleW;
-	SDL_Rect rectTitle; rectTitle.x = GAME_SCREEN_WIDTH/12; rectTitle.y = 0; rectTitle.w = GAME_SCREEN_WIDTH/1.2; rectTitle.h = GAME_SCREEN_WIDTH/1.2 * titleRatio;
+	titleRatio = titleH/(float)titleW;
+	rectTitle.x = GAME_SCREEN_WIDTH/12; rectTitle.y = 0; rectTitle.w = GAME_SCREEN_WIDTH/1.2; rectTitle.h = GAME_SCREEN_WIDTH/1.2 * titleRatio;
 	SDL_SetTextureBlendMode(render,SDL_BLENDMODE_BLEND);
 
 	//Game title models
-	Model Play = LoadModel("Models/Play.txt");
+	Play = LoadModel("Assets/Models/Play.txt");
 	Play.color = (Pixel){100,30,255,255};
-	Model Options = LoadModel("Models/Options.txt");
+	Options = LoadModel("Assets/Models/Options.txt");
 	Options.color = (Pixel){100,30,255,255};
-	Model ExitModel = LoadModel("Models/Exit.txt");
+	ExitModel = LoadModel("Assets/Models/Exit.txt");
 	ExitModel.color = (Pixel){100,30,255,255};
-	Model Arrow = LoadModel("Models/SmallArrow.txt");
+	Arrow = LoadModel("Assets/Models/SmallArrow.txt");
 	Arrow.color = (Pixel){100,30,255,255};
 	Arrow.position.x = 2;
 	Arrow.position.y = 2.3;
 
 	//Game options models
-	Model Resolution = LoadModel("Models/Resolution.txt");
+	Resolution = LoadModel("Assets/Models/Resolution.txt");
 	Resolution.color = (Pixel){100,30,255,255};
 	Resolution.position.y = 2;
 	Resolution.enabled = 0;
 
-	Model R1920 = LoadModel("Models/1920x1080.txt");
+	R1920 = LoadModel("Assets/Models/1920x1080.txt");
 	R1920.color = (Pixel){100,30,255,255};
 
-	Model R1366 = LoadModel("Models/1366x768.txt");
+	R1366 = LoadModel("Assets/Models/1366x768.txt");
 	R1366.color = (Pixel){100,30,255,255};
 
-	Model R1280 = LoadModel("Models/1280x720.txt");
+	R1280 = LoadModel("Assets/Models/1280x720.txt");
 	R1280.color = (Pixel){100,30,255,255};
 
-	Model Bloom = LoadModel("Models/Bloom.txt");
+	Bloom = LoadModel("Assets/Models/Bloom.txt");
 	Bloom.color = (Pixel){100,30,255,255};
 	Bloom.position.y = 1;
 	Bloom.enabled = 0;
 
-	Model ToggleOff = LoadModel("Models/ToggleOff.txt");
+	ToggleOff = LoadModel("Assets/Models/ToggleOff.txt");
 	ToggleOff.color = (Pixel){100,30,255,255};
 
-	Model ToggleOn = LoadModel("Models/ToggleOn.txt");
+	ToggleOn = LoadModel("Assets/Models/ToggleOn.txt");
 	ToggleOn.color = (Pixel){100,30,255,255};
 
-	Model BackOp = LoadModel("Models/Back.txt");
+	BackOp = LoadModel("Assets/Models/Back.txt");
 	BackOp.color = (Pixel){100,30,255,255};
 	BackOp.enabled = 0;
 
-	Model StartRace = LoadModel("Models/StartRace.txt");
+	StartRace = LoadModel("Assets/Models/StartRace.txt");
 	StartRace.color = (Pixel){100,30,255,255};
 	StartRace.rotation.y = 15;
 	StartRace.position.z = -10;
 	StartRace.position.y = -1;
 	StartRace.enabled = 0;
 
-	Model BackPlay = LoadModel("Models/Back.txt");
+	BackPlay = LoadModel("Assets/Models/Back.txt");
 	BackPlay.color = (Pixel){100,30,255,255};
 	BackPlay.enabled = 0;
 	BackPlay.position = subtract(StartRace.position,((Vector3){0,1,0}));
@@ -338,524 +858,36 @@ void MenuState(){
 
 
 	//Play screen car model
-	Model Car = LoadModel("Models/Car1.txt");
-	Car.color = (Pixel){100,255,30,255};
-	Car.position.z = 20;
+	CarModel = LoadModel("Assets/Models/Car1.txt");
+	CarModel.color = (Pixel){100,255,30,255};
+	CarModel.position.z = 20;
 
-	Model Plane = LoadModel("Models/Plane.txt");
+	Plane = LoadModel("Assets/Models/Plane.txt");
 	Plane.color = (Pixel){255,60,30,100};
 	Plane.position.y = -5;
 
 	TransformCamera((Vector3){0,4.02,22.5},(Vector3){-2.16,0,0});
 
 	//0 = Title, 1 = Play, 2 = Options
-	int MenuScreen = 0;
-	float cameraMovementTime = 0;
-	int currentOption = 2;
-	int numOptions = 3;
+	MenuScreen = 0;
+	cameraMovementTime = 0;
+	currentOption = 2;
+	numOptions = 3;
 	//0 = 1920, 1 = 1366, 2 = 1280
-	int OptResolution = 0;
+	OptResolution = 0;
 
-	//Menu loop
-	while (!Exit)
-	{
-		//Ms tick time
-		frameTicks = SDL_GetTicks();
-		LAST = NOW;
-		NOW = SDL_GetPerformanceCounter();
-		deltaTime = (double)((NOW - LAST)*1000 / SDL_GetPerformanceFrequency() )*0.001;
+	//Start loop
+	emscripten_set_main_loop_arg(MenuStateLoop, NULL, -1, 1);
+}
 
-		InputUpdate();
-		
-		//Input handling and option selection
-		if (GetKeyDown(SDL_SCANCODE_RETURN))
-		{
-			
-			//Pressed enter in game screen
-			//Transition from game to title screen
-			if(MenuScreen == 1 ){
-				switch(currentOption){
-					//Go to Game Race
-					case 1:
-						programState = STATE_GAME;
-						Exit = 1;
-					break;
-					//Game to title
-					case 0:
-						cameraMovementTime = 0;
-						MenuScreen = 0;
-						numOptions = 3;
-						currentOption = 2;
-
-						Play.enabled = 1;
-						Options.enabled = 1;
-						ExitModel.enabled = 1;
-						Arrow.enabled = 1;
-
-						Play.position = (Vector3){-20,0,0};
-						Options.position = (Vector3){-20,0,0};
-						ExitModel.position = (Vector3){-20,0,0};
-						Arrow.position = (Vector3){20,0,0};
-					break;
-				}
-
-			}
-			//Pressed enter in the Title screen
-			else if(MenuScreen == 0){
-				switch(currentOption){
-					//Title to game (Option 2)
-					case 2:
-						cameraMovementTime = 0;
-						MenuScreen = 1;
-						numOptions = 2;
-						currentOption = 1;
-
-						StartRace.enabled = 1;
-						BackPlay.enabled = 1;
-						
-						StartRace.position.x = 30;
-						BackPlay.position.x = 30;
-					break;
-					//Title to options (Option 1)
-					case 1:
-						MenuScreen = 2;
-						numOptions = 3;
-						currentOption = 2;
-
-						Resolution.enabled = 1;
-						Bloom.enabled = 1;
-						BackOp.enabled = 1;
-
-						Resolution.position.x = 20;
-						Bloom.position.x = 20;
-						BackOp.position.x = 20;
-					break;
-					//Title to exit (Option 0)
-					case 0:
-						programState = STATE_EXIT;
-						Exit = 1;
-					break;
-				}
-			}
-			//Pressed enter in options screen
-			else if(MenuScreen == 2){
-				switch(currentOption){
-					//Pressed on resolution, set window resolution, recalculate values and recreate textures
-					case 2:
-						ChangeResolution(OptResolution);
-						rectTitle.x = GAME_SCREEN_WIDTH/12;
-						rectTitle.w = GAME_SCREEN_WIDTH/1.2; 
-						rectTitle.h = GAME_SCREEN_WIDTH/1.2 * titleRatio;
-					break;
-					//Pressed on Bloom, toggle bloom
-					case 1:
-						BLOOM_ENABLED = !BLOOM_ENABLED;
-					break;
-					//Pressed on back, return to title screen
-					case 0:
-						MenuScreen = 0;
-						numOptions = 3;
-						currentOption = 2;
-
-						Play.enabled = 1;
-						Options.enabled = 1;
-						ExitModel.enabled = 1;
-
-						Arrow.position = (Vector3){20,0,0};
-					break;
-				}
-			}
-		}
-		//Select up option
-		if (GetKeyDown(SDL_SCANCODE_UP)|GetKeyDown(SDL_SCANCODE_W)){
-			currentOption = (currentOption+1)%numOptions;
-		}
-		//Select down option
-		if (GetKeyDown(SDL_SCANCODE_DOWN)|GetKeyDown(SDL_SCANCODE_S)){
-			currentOption = (currentOption-1)%numOptions;
-			currentOption = currentOption<0? numOptions + currentOption : currentOption;
-		}
-		//Select left option
-		if (GetKeyDown(SDL_SCANCODE_LEFT)|GetKeyDown(SDL_SCANCODE_A)){
-			if(MenuScreen == 2 && currentOption == 2){
-				OptResolution = (OptResolution-1)%3;
-				OptResolution = OptResolution<0? 3 + OptResolution : OptResolution;
-			}
-		}
-		//Select right option
-		if (GetKeyDown(SDL_SCANCODE_RIGHT)|GetKeyDown(SDL_SCANCODE_D)){
-			if(MenuScreen == 2 && currentOption == 2){
-				OptResolution = (OptResolution+1)%3;
-			}
-		}
-		if (GetKey(SDL_SCANCODE_ESCAPE))
-		{
-			programState = STATE_EXIT;
-			Exit = 1;
-		}
-
-		//Moves plane in the background
-		Plane.position.z = fmod(Plane.position.z+50*deltaTime,10.0);
-
-		//Position texts based on the current screen of the menu
-		switch(MenuScreen){
-			//-------------------------------------- Title Screen ---------------------------------------
-			case 0:
-				
-				//Title go down
-				if(rectTitle.y < 0){
-					rectTitle.y += 1000*deltaTime;
-				}else{
-					rectTitle.y = 0;
-				}
-
-				//Options come from right side of the screen
-				if(Play.position.x < 0){
-					Play.position.x += 50*deltaTime;
-				}else{
-					Play.position.x = 0;
-				}
-				if(Options.position.x < 0){
-					Options.position.x += 40*deltaTime;
-				}else{
-					Options.position.x = 0;
-				}
-				if(ExitModel.position.x < 0){
-					ExitModel.position.x += 30*deltaTime;
-				}else{
-					ExitModel.position.x = 0;
-				}
-				if(Arrow.position.x > 2){
-					Arrow.position.x -= 30*deltaTime;
-				}else{
-					Arrow.position.x = 2;
-				}
-
-				//If Options screen options are active, put them at left and disable
-				if(BackOp.enabled){
-					if(Resolution.position.x < 20){
-						Resolution.position.x += 50*deltaTime;
-					}else{
-						Resolution.enabled = 0;
-					}
-					if(Bloom.position.x < 20){
-						Bloom.position.x += 40*deltaTime;
-					}else{
-						Bloom.enabled = 0;
-					}
-					if(BackOp.position.x < 20){
-						BackOp.position.x += 40*deltaTime;
-					}else{
-						BackOp.enabled = 0;
-					}
-				}
-				//If Play game screen options are active, put them at left and disable
-				if(StartRace.enabled){
-					if(StartRace.position.x <30){
-						StartRace.position.x += 60*deltaTime;
-					}else{
-						StartRace.enabled = 0;
-					}
-					if(BackPlay.position.x < 30){
-						BackPlay.position.x += 50*deltaTime;
-					}else{
-						BackPlay.enabled = 0;
-					}
-				}
-
-				switch (currentOption){
-					case 0:
-						Arrow.position.y = 0.35;
-					break;
-					case 1:
-						Arrow.position.y = 1.35;
-					break;
-					case 2:
-						Arrow.position.y = 2.35;
-					break;
-				}
-
-				//Car brakes
-				if(Car.position.z < 20){
-					Car.position.z += 40*deltaTime;
-					//Return camera to original position while the car brakes
-					cameraMovementTime += deltaTime/2;
-
-					cameraPosition.x = lerp(cameraPosition.x,0,cameraMovementTime);
-					cameraPosition.y = lerp(cameraPosition.y,4.02,cameraMovementTime);
-					cameraPosition.z = lerp(cameraPosition.z,22.5,cameraMovementTime);
-
-					cameraRotation.x = lerp(cameraRotation.x,-2.16,cameraMovementTime);
-					cameraRotation.y = lerp(cameraRotation.y,0,cameraMovementTime);
-					cameraRotation.z = lerp(cameraRotation.z,0,cameraMovementTime);
-				}else{
-					Car.position.z = 20;
-				}
-
-			break;
-			//-------------------------------------- Play Game ---------------------------------------
-			case 1:
-
-				//Title go up
-				if(rectTitle.y > -rectTitle.h){
-					rectTitle.y -= 1000*deltaTime;
-				}else{
-					rectTitle.y = -rectTitle.h;
-				}
-
-				//Options go towards camera
-				if(Play.position.z < 20){
-					Play.position.z += 50*deltaTime;
-				}else{
-					Play.enabled = 0;
-				}
-				if(Options.position.z < 20){
-					Options.position.z += 50*deltaTime;
-				}else{
-					Options.enabled = 0;
-				}
-				if(ExitModel.position.z < 20){
-					ExitModel.position.z += 50*deltaTime;
-				}else{
-					ExitModel.enabled = 0;
-				}
-
-				//Car accelerate
-				if(Car.position.z > 0){
-					Car.position.z -= 30*deltaTime;
-
-					//While car hasn't stopped, move arrow out of the screen
-					if(Arrow.position.z < 20){
-						Arrow.position.z += 50*deltaTime;
-					}
-				}else{
-					Car.position.z = 0;
-
-					//Move camera closer to car after he enters the screen
-					cameraMovementTime += deltaTime/2;
-					cameraPosition.x = lerp(cameraPosition.x,2.961973,cameraMovementTime);
-					cameraPosition.y = lerp(cameraPosition.y,1.135397,cameraMovementTime);
-					cameraPosition.z = lerp(cameraPosition.z,5.717530,cameraMovementTime);
-
-					cameraRotation.x = lerp(cameraRotation.x,-2.160000,cameraMovementTime);
-					cameraRotation.y = lerp(cameraRotation.y,-15.240041,cameraMovementTime);
-					cameraRotation.z = lerp(cameraRotation.z,0,cameraMovementTime);
-
-					//Make arrow reappear and move StartRace and BackPlay to position
-					Arrow.rotation = StartRace.rotation;
-					if(StartRace.position.x > 2){
-						StartRace.position.x -= 58*deltaTime;
-					}else{
-						StartRace.position.x = 2;
-					}
-
-					if(BackPlay.position.x > 2){
-						BackPlay.position.x -= 58*deltaTime;
-					}else{
-						BackPlay.position.x = 2;
-					}
-				}
-
-				switch (currentOption){
-					case 1:
-						Arrow.position = StartRace.position;
-						Arrow.position.x += 2.1;
-						Arrow.position.y +=0.35;
-					break;
-					case 0:
-						Arrow.position = StartRace.position;
-						Arrow.position.x += 2.1;
-						Arrow.position.y -=0.65;
-					break;
-				}
-
-			break;
-			//-------------------------------------- Options ---------------------------------------
-			case 2:
-				
-				//Title screen options goes to right
-				if(Play.position.x > -20){
-					Play.position.x -= 50*deltaTime;
-					
-					//Put arrow away, to return it later
-					if(Arrow.position.x < 20){
-						Arrow.position.x += 50*deltaTime;
-					}else{
-						Arrow.position.x = 20;
-					}
-
-				}else{
-					Play.position.x = -20;
-
-					//After this element is off screen, return the arrow to screen
-					if(Arrow.position.x > 4){
-						Arrow.position.x -= 50*deltaTime;
-					}else{
-						Arrow.position.x = 3.9;
-					}
-				}
-				if(Options.position.x > -20){
-					Options.position.x -= 40*deltaTime;
-				}else{
-					Options.position.x = -20;
-				}
-				if(ExitModel.position.x > -20){
-					ExitModel.position.x -= 30*deltaTime;
-				}else{
-					ExitModel.position.x = -20;
-				}
-
-				//Options screen options come from the left
-				if(Resolution.position.x > 0){
-					Resolution.position.x -= 50*deltaTime;
-				}else{
-					Resolution.position.x = 0;
-				}
-				if(Bloom.position.x > 0){
-					Bloom.position.x -= 40*deltaTime;
-				}else{
-					Bloom.position.x = 0;
-				}
-				if(BackOp.position.x > 0){
-					BackOp.position.x -= 40*deltaTime;
-				}else{
-					BackOp.position.x = 0;
-				}
-
-				switch (currentOption){
-					case 0:
-						Arrow.position.y = 0.35;
-					break;
-					case 1:
-						Arrow.position.y = 1.35;
-					break;
-					case 2:
-						Arrow.position.y = 2.35;
-					break;
-				}
-
-				//Car brakes
-				if(Car.position.z < 20){
-					Car.position.z += 40*deltaTime;
-					//Return camera to original position while the car brakes
-					cameraMovementTime += deltaTime/2;
-
-					cameraPosition.x = lerp(cameraPosition.x,0,cameraMovementTime);
-					cameraPosition.y = lerp(cameraPosition.y,4.02,cameraMovementTime);
-					cameraPosition.z = lerp(cameraPosition.z,22.5,cameraMovementTime);
-
-					cameraRotation.x = lerp(cameraRotation.x,-2.16,cameraMovementTime);
-					cameraRotation.y = lerp(cameraRotation.y,0,cameraMovementTime);
-					cameraRotation.z = lerp(cameraRotation.z,0,cameraMovementTime);
-				}else{
-					Car.position.z = 20;
-				}
-
-			break;
-		}
-
-		
-		//Rendering
-		//Locks texture to manual modification
-		SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
-			UpdateScreenPointer(renderPix);
-			ClearScreen();
-
-			RenderModel(&Play);
-			RenderModel(&Options);
-			RenderModel(&ExitModel);
-			RenderModel(&Arrow);
-
-			RenderModel(&Resolution);
-			RenderModel(&Bloom);
-			RenderModel(&BackOp);
-
-			RenderModel(&BackPlay);
-			RenderModel(&StartRace);
-
-			RenderModel(&Car);
-			RenderModel(&Plane);
-
-			//Render the options
-			if(MenuScreen == 2){
-				if(BLOOM_ENABLED){
-					ToggleOn.position = (Vector3){Bloom.position.x-0.6,1.3,0};
-					RenderModel(&ToggleOn);
-				}else{
-					ToggleOff.position = (Vector3){Bloom.position.x-0.6,1.3,0};
-					RenderModel(&ToggleOff);
-				}
-
-				if(OptResolution == 0){
-					R1920.position = (Vector3){Resolution.position.x,2,0};
-					RenderModel(&R1920);
-				}else if(OptResolution == 1){
-					R1366.position = (Vector3){Resolution.position.x,2,0};
-					RenderModel(&R1366);
-				}else{
-					R1280.position = (Vector3){Resolution.position.x,2,0};
-					RenderModel(&R1280);
-				}
-			}
-
-			if(BLOOM_ENABLED){
-				//Process first bloom pass
-				SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
-					RenderDownscale(bloomS1Pix,BLOOMS1_DOWNSCALE,0.7);
-				SDL_UnlockTexture(bloomStep1);
-
-				//Process second bloom pass
-				SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
-					RenderDownscale(bloomS2Pix,BLOOMS2_DOWNSCALE,1);
-					BlurBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,4);
-				SDL_UnlockTexture(bloomStep2);
-			}
-		SDL_UnlockTexture(render);
-
-		//Clears screen and blit the render texture into the screen
-		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, skyTex, NULL, &rectSky);
-		SDL_RenderCopy(renderer, render, NULL, NULL);
-		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
-
-		//Constant of how much the sun must move based in the FOV
-		Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
-		float sunAngle = fmodulus(cameraRotation.y,360.0);
-
-		//Derivative of |sin(x/2)|, used to position sun based on camera angle
-		float mult = sin(DEG2RAD*sunAngle)/(4*fabs(cos(DEG2RAD*sunAngle/2.0)));
-
-		rectSun.x = mult*180* sunRot.x + GAME_SCREEN_WIDTH/2.67;
-		rectSun.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
-		SDL_RenderCopy(renderer, sunTex, NULL, &rectSun);
-
-		if(BLOOM_ENABLED){
-			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
-			SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
-		}
-		//Render menu screen
-		SDL_RenderCopy(renderer, titleTex, NULL, &rectTitle);
-
-		//Draw stats text
-        FC_DrawAlign(fontSmall, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
-
-		//Passes rendered image to screen
-		SDL_RenderPresent(renderer);
-
-		//Calculates the time it took to process this iteration
-		mstime = SDL_GetTicks()-frameTicks;
-		ProcessFPS();
-		
-		//Waits for at least 60 frames to be elapsed
-		while( SDL_GetTicks()-frameTicks <  (1000/FRAMES_PER_SECOND) ){ }
-	}
+void MenuStateFinish(){
 	
 	//End of main menu
 
 	FreeModel(&Play);
 	FreeModel(&Options);
 	FreeModel(&ExitModel);
-	FreeModel(&Car);
+	FreeModel(&CarModel);
 	FreeModel(&Plane);
 	FreeModel(&Resolution);
 	FreeModel(&Bloom);
@@ -875,125 +907,131 @@ void MenuState(){
 
 extern Model TrackPath;
 extern Model TrackModel;
-void GameState(){
-	LoadTrack("Tracks/Track1");
+double elapsedTime;
+void GameStateFinish();
+void GameStateLoop(void *arg){
+	//Ms tick time
+	frameTicks = SDL_GetTicks();
+	LAST = NOW;
+	NOW = SDL_GetPerformanceCounter();
+	deltaTime = (double)((NOW - LAST)*1000 / SDL_GetPerformanceFrequency() )*0.001;
+	elapsedTime+=deltaTime;
 
-	//Fred1 = LoadModel("Models/Fred.txt");
+	InputUpdate();
+	if(time>=0){
+		GameUpdate();
+	}
+	if (GetKeyDown(SDL_SCANCODE_RETURN) && RaceEnded()){
+		programState = STATE_MENU;
+		Exit = 1;
+	}
+	
+	//Locks texture to manual modification
+	SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
+		UpdateScreenPointer(renderPix);
+		ClearScreen();
+		
+		RenderModel(&TrackModel);
+		//RenderModel(&TrackPath);
+
+		//RenderModel(&Fred1);
+		//RenderModel(&Fred2);
+		//RenderModel(&Fred3);
+
+		RenderCars();
+
+		if(BLOOM_ENABLED){
+			//Process first bloom pass
+			SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
+				RenderDownscale(bloomS1Pix,BLOOMS1_DOWNSCALE,0.7);
+			SDL_UnlockTexture(bloomStep1);
+
+			//Process second bloom pass
+			SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
+				RenderDownscale(bloomS2Pix,BLOOMS2_DOWNSCALE,1);
+				BlurBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,4);
+			SDL_UnlockTexture(bloomStep2);
+		}
+	SDL_UnlockTexture(render);
+
+	//Clears screen and blit the render texture into the screen
+	SDL_RenderClear(renderer);
+	SDL_RenderCopy(renderer, skyTex, NULL, &rectSky);
+	SDL_RenderCopy(renderer, render, NULL, NULL);
+	SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
+
+	//Constant of how much the sun must move based in the FOV
+	Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
+	float sunAngle = fmodulus(cameraRotation.y,360.0);
+
+	//Derivative of |sin(x/2)|, used to position sun based on camera angle
+	float mult = sin(DEG2RAD*sunAngle)/(4*fabs(cos(DEG2RAD*sunAngle/2.0)));
+
+	rectSun.x = mult*180* sunRot.x + GAME_SCREEN_WIDTH/2.67;
+
+	rectSun.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
+	SDL_RenderCopy(renderer, sunTex, NULL, &rectSun);
+
+	if(BLOOM_ENABLED){
+		SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
+		SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
+	}
+
+	if(time>=0){
+		int playerPos = GetPlayerRank(0);
+		if(!RaceEnded()){
+			FC_Draw(fontMedium, renderer,10,0, "Time: %3.2f",time);
+			FC_Draw(fontBig, renderer,50,FC_GetLineHeight(fontMedium)/2, "%d", playerPos);
+			FC_Draw(fontSmall, renderer,
+					50 + FC_GetWidth(fontBig, "%d", playerPos)+FC_GetWidth(fontSmall, "st"),
+					FC_GetLineHeight(fontBig) - FC_GetLineHeight(fontMedium)/2,
+					"%s", playerPos==1? "st": (playerPos==2? "nd": (playerPos==3? "rd":"th"))
+					);
+		}else{
+			if(playerPos!=1)
+			FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "%d%s Place!", playerPos, playerPos==1? "st": (playerPos==2? "nd": (playerPos==3? "rd":"th")));
+			else
+			FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "YOU WON!");
+		}
+	}else{
+		FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "%d",(int)ceilf(-elapsedTime));
+	}
+	
+	//Draw stats text
+	FC_DrawAlign(fontSmall, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
+
+	//Passes rendered image to screen
+	SDL_RenderPresent(renderer);
+
+	//Calculates the time it took to process this iteration
+	mstime = SDL_GetTicks()-frameTicks;
+	ProcessFPS();
+
+	if(Exit){
+		emscripten_cancel_main_loop();
+		GameStateFinish();
+	}
+}
+
+void GameState(){
+	LoadTrack("Assets/Tracks/Track1");
+
+	//Fred1 = LoadModel("Assets/Models/Fred.txt");
 	//Fred1.color = (Pixel){0,0,255,255};
-	//Fred2 = LoadModel("Models/Fred.txt");
+	//Fred2 = LoadModel("Assets/Models/Fred.txt");
 	//Fred2.color = (Pixel){0,255,0,255};
-	//Fred3 = LoadModel("Models/Fred.txt");
+	//Fred3 = LoadModel("Assets/Models/Fred.txt");
 	//Fred3.color = (Pixel){255,0,0,255};
 
 	InitCars();
-	double time = -3;
+	elapsedTime = -3;
 	GameUpdate();
 	//Game loop
-	while (!Exit)
-	{
-		//Ms tick time
-		frameTicks = SDL_GetTicks();
-		LAST = NOW;
-		NOW = SDL_GetPerformanceCounter();
-		deltaTime = (double)((NOW - LAST)*1000 / SDL_GetPerformanceFrequency() )*0.001;
-		time+=deltaTime;
+	emscripten_set_main_loop_arg(GameStateLoop, NULL, -1, 1);
+}
 
-		InputUpdate();
-		if(time>=0){
-			GameUpdate();
-		}
-		if (GetKeyDown(SDL_SCANCODE_RETURN) && RaceEnded()){
-			programState = STATE_MENU;
-			Exit = 1;
-		}
-		
-		//Locks texture to manual modification
-		SDL_LockTexture(render, NULL, (void**)&renderPix, &renderPitch);
-			UpdateScreenPointer(renderPix);
-			ClearScreen();
-			
-			RenderModel(&TrackModel);
-			//RenderModel(&TrackPath);
-
-			//RenderModel(&Fred1);
-			//RenderModel(&Fred2);
-			//RenderModel(&Fred3);
-
-			RenderCars();
-
-			if(BLOOM_ENABLED){
-				//Process first bloom pass
-				SDL_LockTexture(bloomStep1, NULL, (void**)&bloomS1Pix, &bloomS1Pitch);
-					RenderDownscale(bloomS1Pix,BLOOMS1_DOWNSCALE,0.7);
-				SDL_UnlockTexture(bloomStep1);
-
-				//Process second bloom pass
-				SDL_LockTexture(bloomStep2, NULL, (void**)&bloomS2Pix, &bloomS2Pitch);
-					RenderDownscale(bloomS2Pix,BLOOMS2_DOWNSCALE,1);
-					BlurBloom(bloomS2Pix,BLOOMS2_DOWNSCALE,4);
-				SDL_UnlockTexture(bloomStep2);
-			}
-		SDL_UnlockTexture(render);
-
-		//Clears screen and blit the render texture into the screen
-		SDL_RenderClear(renderer);
-		SDL_RenderCopy(renderer, skyTex, NULL, &rectSky);
-		SDL_RenderCopy(renderer, render, NULL, NULL);
-		SDL_RenderCopy(renderer, vigTex, NULL, &rectVig);
-
-		//Constant of how much the sun must move based in the FOV
-		Vector3 sunRot = {(150000/(FOV*FOV)),(120000/(FOV*FOV)),0};
-		float sunAngle = fmodulus(cameraRotation.y,360.0);
-
-		//Derivative of |sin(x/2)|, used to position sun based on camera angle
-		float mult = sin(DEG2RAD*sunAngle)/(4*fabs(cos(DEG2RAD*sunAngle/2.0)));
-
-		rectSun.x = mult*180* sunRot.x + GAME_SCREEN_WIDTH/2.67;
-
-		rectSun.y = GAME_SCREEN_HEIGHT/4.5f - fmod(cameraRotation.x,180)*sunRot.y;
-		SDL_RenderCopy(renderer, sunTex, NULL, &rectSun);
-
-		if(BLOOM_ENABLED){
-			SDL_RenderCopy(renderer, bloomStep1, NULL, NULL);
-			SDL_RenderCopy(renderer, bloomStep2, NULL, NULL);
-		}
-
-		if(time>=0){
-			int playerPos = GetPlayerRank(0);
-			if(!RaceEnded()){
-				FC_Draw(fontMedium, renderer,10,0, "Time: %3.2f",time);
-				FC_Draw(fontBig, renderer,50,FC_GetLineHeight(fontMedium)/2, "%d", playerPos);
-				FC_Draw(fontSmall, renderer,
-						50 + FC_GetWidth(fontBig, "%d", playerPos)+FC_GetWidth(fontSmall, "st"),
-						FC_GetLineHeight(fontBig) - FC_GetLineHeight(fontMedium)/2,
-						"%s", playerPos==1? "st": (playerPos==2? "nd": (playerPos==3? "rd":"th"))
-						);
-			}else{
-				if(playerPos!=1)
-				FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "%d%s Place!", playerPos, playerPos==1? "st": (playerPos==2? "nd": (playerPos==3? "rd":"th")));
-				else
-				FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "YOU WON!");
-			}
-		}else{
-			FC_DrawAlign(fontBig, renderer,SCREEN_WIDTH/2,SCREEN_HEIGHT/3,FC_ALIGN_CENTER, "%d",(int)ceilf(-time));
-		}
-		
-		//Draw stats text
-        FC_DrawAlign(fontSmall, renderer, GAME_SCREEN_WIDTH,0,FC_ALIGN_RIGHT, "%4.2f :FPS\n%3d : MS\n%5.4lf : DT", GetFPS(), mstime, deltaTime);
-
-		//Passes rendered image to screen
-		SDL_RenderPresent(renderer);
-
-		//Calculates the time it took to process this iteration
-		mstime = SDL_GetTicks()-frameTicks;
-		ProcessFPS();
-		
-		//Waits for at least 60 frames to be elapsed
-		while( SDL_GetTicks()-frameTicks <  (1000/FRAMES_PER_SECOND) ){ }
-	}
-	
+void GameStateFinish(){	
 	//End of the game
-
 	FreeTrack();
 
 	FreeModel(&Fred1);
@@ -1010,8 +1048,8 @@ void NextState(){
 	Exit = 0;
 	switch(programState){
 		case STATE_EXIT:
-			//Return states until gets back to main call and ends
-			return;
+			//Deallocate objects and systems
+			FreeAllocations();
 		break;
 		case STATE_MENU:
 			MenuState();
@@ -1070,17 +1108,17 @@ void ChangeResolution(int r){
 	FC_FreeFont(fontBig);
 
 	fontSmall = FC_CreateFont();  
-	if(!FC_LoadFont(fontSmall, renderer, "Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+	if(!FC_LoadFont(fontSmall, renderer, "Assets/Visitor.ttf",18, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
         printf("Font: Error loading font!\n");
 	}
 
 	fontMedium = FC_CreateFont();  
-	if(!FC_LoadFont(fontMedium, renderer, "Visitor.ttf",72, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+	if(!FC_LoadFont(fontMedium, renderer, "Assets/Visitor.ttf",72, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
         printf("Font: Error loading font!\n");
 	}
 
 	fontBig = FC_CreateFont();  
-	if(!FC_LoadFont(fontBig, renderer, "Visitor.ttf",260, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
+	if(!FC_LoadFont(fontBig, renderer, "Assets/Visitor.ttf",260, FC_MakeColor(255,255,255,255), TTF_STYLE_NORMAL)){
         printf("Font: Error loading font!\n");
 	}
 
@@ -1100,7 +1138,7 @@ void InputUpdate(){
     //Updates keyboard array and manages events
     if(keyboard_current!=NULL){
         memcpy(keyboard_last,keyboard_current,284*sizeof(Uint8));
-    }
+    }/*
     while (SDL_PollEvent(&event)) {
         switch (event.type)
         {
@@ -1109,7 +1147,49 @@ void InputUpdate(){
                 Exit = 1;
                 break;
         }
-    }
+    }*/
+
+	SDL_Event event;
+	while (SDL_PollEvent(&event)) {
+		switch (event.type) {
+			case SDL_KEYDOWN:
+				switch (event.key.keysym.sym) {
+					case SDLK_RIGHT: keyboard_current[SDL_SCANCODE_RIGHT] = 1; break;
+					case SDLK_LEFT: keyboard_current[SDL_SCANCODE_LEFT] = 1; break;
+					case SDLK_UP: keyboard_current[SDL_SCANCODE_UP] = 1; break;
+					case SDLK_DOWN: keyboard_current[SDL_SCANCODE_DOWN] = 1; break;
+
+					case SDLK_w: keyboard_current[SDL_SCANCODE_W] = 1; break;
+					case SDLK_a: keyboard_current[SDL_SCANCODE_A] = 1; break;
+					case SDLK_s: keyboard_current[SDL_SCANCODE_S] = 1; break;
+					case SDLK_d: keyboard_current[SDL_SCANCODE_D] = 1; break;
+
+					case SDLK_b: keyboard_current[SDL_SCANCODE_B] = 1; break;
+
+					case SDLK_RETURN: keyboard_current[SDL_SCANCODE_RETURN] = 1; break;
+					case SDLK_ESCAPE: keyboard_current[SDL_SCANCODE_ESCAPE] = 1; break;
+				}
+			break;
+			case SDL_KEYUP:
+				switch (event.key.keysym.sym) {
+					case SDLK_RIGHT: keyboard_current[SDL_SCANCODE_RIGHT] = 0; break;
+					case SDLK_LEFT: keyboard_current[SDL_SCANCODE_LEFT] = 0; break;
+					case SDLK_UP: keyboard_current[SDL_SCANCODE_UP] = 0; break;
+					case SDLK_DOWN: keyboard_current[SDL_SCANCODE_DOWN] = 0; break;
+
+					case SDLK_w: keyboard_current[SDL_SCANCODE_W] = 0; break;
+					case SDLK_a: keyboard_current[SDL_SCANCODE_A] = 0; break;
+					case SDLK_s: keyboard_current[SDL_SCANCODE_S] = 0; break;
+					case SDLK_d: keyboard_current[SDL_SCANCODE_D] = 0; break;
+
+					case SDLK_b: keyboard_current[SDL_SCANCODE_B] = 0; break;
+
+					case SDLK_RETURN: keyboard_current[SDL_SCANCODE_RETURN] = 0; break;
+					case SDLK_ESCAPE: keyboard_current[SDL_SCANCODE_ESCAPE] = 0; break;
+				}
+			break;
+		}
+	}
 }
 
 Vector3 pos,dir;
@@ -1117,7 +1197,7 @@ Vector3 pos,dir;
 void GameUpdate(){
 		
 	//Camera movement
-	if (GetKey(SDL_SCANCODE_W))
+	/*if (GetKey(SDL_SCANCODE_W))
 	{
 		Vector3 dir = scalarMult(cameraForward,50);
 
@@ -1173,7 +1253,7 @@ void GameUpdate(){
 	else if (GetKey(SDL_SCANCODE_Y))
 	{
 		RotateCamera((Vector3){0,-20,0});
-	}
+	}*/
 
 	if (GetKey(SDL_SCANCODE_ESCAPE))
 	{

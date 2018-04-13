@@ -32,7 +32,7 @@ void InitCars ()
         players[i].position = SpawnPos[i];
         players[i].rotation = SpawnRot[i];
 
-        players[i].object = LoadModel("Models/Car1.txt");
+        players[i].object = LoadModel("Assets/Models/Car1.txt");
         players[i].object.color = CarColors[i%(sizeof(CarColors)/sizeof(Pixel))];
     }
 }
@@ -89,7 +89,7 @@ void AIMovement(){
             NormalizeVector(&cnVec);
 
             float turnAngle = acos(dot(forward,cnVec))*RAD2DEG;
-            if(abs(turnAngle) > 0){
+            if(fabs(turnAngle) > 0){
                 float turnDir = dot(right,cnVec);
 
                 if(turnDir < 0){
@@ -290,7 +290,7 @@ void PointInPath(Vector3 point, Vector3 direction, Vector3 *closest, Vector3 *ne
         return;
     }
 
-    int i;
+    long int i;
     *closest = TrackPath.vertices[0];
     *next = TrackPath.vertices[1];
     float distance = INFINITY;

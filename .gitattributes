@@ -1,4 +1,4 @@
 Blend/ merge=theirs
-Textures/ merge=theirs
+Assets/Textures/ merge=theirs
 *.dll/ merge=theirs 
 *.exe/ merge=theirs 
