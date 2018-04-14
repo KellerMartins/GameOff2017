@@ -109,9 +109,9 @@ void CarHandling(int player, int dir){
     if(dir == CAR_FRONT)
     {
         if(player == 0){
-            players[player].speed += players[player].speed < MAX_SPEED*1.025f ? 10*deltaTime : 0;
+            players[player].speed += players[player].speed < MAX_SPEED*1.018f ? 10*deltaTime : 0;
         }else{
-            players[player].speed += players[player].speed < MAX_SPEED ? 12.2*deltaTime : 0; 
+            players[player].speed += players[player].speed < MAX_SPEED ? 20*deltaTime : 0; 
         }
     }else if(dir == CAR_STOP)
     {

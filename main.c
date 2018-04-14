@@ -569,13 +569,15 @@ void MenuStateLoop(void *arg){
 
 				//Move camera closer to car after he enters the screen
 				cameraMovementTime += deltaTime/2;
-				cameraPosition.x = lerp(cameraPosition.x,2.961973,cameraMovementTime);
-				cameraPosition.y = lerp(cameraPosition.y,1.135397,cameraMovementTime);
-				cameraPosition.z = lerp(cameraPosition.z,5.717530,cameraMovementTime);
+				if(cameraMovementTime<1){
+					cameraPosition.x = lerp(cameraPosition.x,2.961973,cameraMovementTime);
+					cameraPosition.y = lerp(cameraPosition.y,1.135397,cameraMovementTime);
+					cameraPosition.z = lerp(cameraPosition.z,5.717530,cameraMovementTime);
 
-				cameraRotation.x = lerp(cameraRotation.x,-2.160000,cameraMovementTime);
-				cameraRotation.y = lerp(cameraRotation.y,-15.240041,cameraMovementTime);
-				cameraRotation.z = lerp(cameraRotation.z,0,cameraMovementTime);
+					cameraRotation.x = lerp(cameraRotation.x,-2.160000,cameraMovementTime);
+					cameraRotation.y = lerp(cameraRotation.y,-15.240041,cameraMovementTime);
+					cameraRotation.z = lerp(cameraRotation.z,0,cameraMovementTime);
+				}
 
 				//Make arrow reappear and move StartRace and BackPlay to position
 				Arrow.rotation = StartRace.rotation;
