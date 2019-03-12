@@ -10,3 +10,5 @@ The game was programmed in C, using the SDL2 library with the SDL2_image, SDL2_t
 ### State of the game: UNFINISHED AND BUGGY
 Sadly I couldn't finish the game in time, as I got busy with other things by the middle of the jam and a friend who was helping had to drop it, but it still was a lot fun to create, and helped me to improve my skills in C and in the SDL API.
 Later, I fixed some problems that made the game unplayable (like the lack of the finish line...), but it's still very buggy and the code is very messy (as expected from something made in a jam), but if you are curious to try you can compile it by modifying the makefile to find the correct path to the libs (should work on Windows and Linux).
+
+EDIT: Also, you can [play it online here](https://kellermartins.github.io/sunsetRun/sunsetRun.html) (Recommended with some synthwave music)
