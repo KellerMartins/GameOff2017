@@ -9,7 +9,12 @@
 #define DEG2RAD 0.01745329251
 #define RAD2DEG 57.2957795131
 #define ONE_OVER_256 0.00390625
-#define VECTOR3_ZERO (Vector3){0,0,0}
+
+#define VECTOR3_ZERO (Vector3){0, 0, 0}
+#define VECTOR3_UP (Vector3) {0, 1, 0}
+#define VECTOR3_FORWARD (Vector3) {0, 0, -1}
+#define VECTOR3_RIGHT (Vector3) {-1, 0, 0}
+
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
        __typeof__ (b) _b = (b); \
@@ -39,13 +44,13 @@ typedef struct Vector3{
 	float z;
 }Vector3;
 
+void NormalizeVector(Vector3* v);
+Vector3 Reflection(Vector3 *v1,Vector3 *v2);
 
 void InitFPS();
 void ProcessFPS();
 float GetFPS();
 
-void NormalizeVector(Vector3* v);
-Vector3 Reflection(Vector3 *v1,Vector3 *v2);
 int Step(float edge, float x );
 float Smoothstep(float edge0, float edge1, float x);
 float lerp(float v0, float v1, float t);
