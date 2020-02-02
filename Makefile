@@ -1,34 +1,50 @@
-PD = D:
-#CC specifies which compiler we're using
 CC = gcc
 
-#OBJS specifies which files to compile as part of the project
-OBJS = main.c renderer.c utils.c SDL_FontCache.c GameLogic.c
+OBJS = $(wildcard src/*.c) third_party/SDL_FontCache/src/SDL_FontCache.c
 
-#INCLUDE_PATHS specifies the additional include paths we'll need
-INCLUDE_PATHS_W = -I $(PD)\SDL2\SDL2_MinGW_32Bits\include
-INCLUDE_PATHS_L = 
-#LIBRARY_PATHS specifies the additional library paths we'll need
-LIBRARY_PATHS_W = -L $(PD)\SDL2\SDL2_MinGW_32Bits\lib
-LIBRARY_PATHS_L = 
-#COMPILER_FLAGS specifies the additional compilation options we're using
-# -w suppresses all warnings
-# -Wl,-subsystem,windows gets rid of the console window
-# -Wl,-subsystem,windows
-# -fopenmp enables openmp support
-COMPILER_FLAGS = -Wall -ffast-math -O3 
+INCLUDE = -I third_party/SDL_FontCache/include/
+native: INCLUDE += -I D:/DevelopmentLibs/SDL2/include
+				LIBS = -L D:/DevelopmentLibs/SDL2/lib
 
-#LINKER_FLAGS specifies the libraries we're linking against -lglew32  -mwindows
-LINKER_FLAGS_W = -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf
-LINKER_FLAGS_L = -lSDL2 -lSDL2_image -lSDL2_ttf -lm 
-#OBJ_NAME specifies the name of our exectuable
-OBJ_NAME = Retro
+				ifeq ($(OS),Windows_NT)
+					ASSETS = build\win32\Assets
+					OUT = build\win32\sunsetrun
+					LINKER_FLAGS = -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -m32
+				
+				else
+					ASSETS = build/linux/Assets
+					OUT = build/linux/sunsetrun
+					LINKER_FLAGS = -lSDL2 -lSDL2_image -lSDL2_ttf -lm
+				endif
 
-#This is the target that compiles our executable
+all: native
+
+wasm : $(OBJS)
+	emcc $(OBJS) $(INCLUDE) -o build/wasm/sunsetRun.js -s NO_EXIT_RUNTIME=0 -s WASM=1 -s USE_SDL=2 -s USE_SDL_TTF=2 -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='["png"]' -O3 -Wall --emrun --preload-file Assets -s ALLOW_MEMORY_GROWTH=1
+
+native: $(ASSETS)
+	$(CC) $(OBJS) $(INCLUDE) $(LIBS) $(LINKER_FLAGS) -O3 -Wall -o $(OUT)
+
+$(ASSETS):
 ifeq ($(OS),Windows_NT)
-all : $(OBJS)
-	$(CC) $(OBJS) $(INCLUDE_PATHS_W) $(LIBRARY_PATHS_W) $(COMPILER_FLAGS) $(LINKER_FLAGS_W) -o $(OBJ_NAME)
+	XCOPY /e /i /y Assets $(ASSETS)
 else
-all : $(OBJS)
-	$(CC) $(OBJS) $(INCLUDE_PATHS_L) $(LIBRARY_PATHS_L) $(COMPILER_FLAGS) $(LINKER_FLAGS_L) -o $(OBJ_NAME)
+	cp -r Assets $(ASSETS)
+endif
+
+.PHONY: build/%/Assets
+
+clean:
+ifeq ($(OS),Windows_NT)
+	-rd /s /q $(ASSETS)
+	-del /q $(OUT).exe
+	-del build\wasm\sunsetRun.js
+	-del build\wasm\sunsetRun.data
+	-del build\wasm\sunsetRun.wasm
+else
+	-rm -f -r $(ASSETS)
+	-rm -f $(OUT)
+	-rm -f build/wasm/sunsetRun.js
+	-rm -f build/wasm/sunsetRun.data
+	-rm -f build/wasm/sunsetRun.wasm
 endif
